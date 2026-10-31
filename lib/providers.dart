@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 
+import 'cloudflare.dart';
 import 'models.dart';
 
 part 'providers_more.dart';
+part 'providers_protected.dart';
 
 /// Content categories shown as filter chips. Each provider maps these to
 /// its own category codes (or ignores them when it only has one kind).
@@ -41,6 +43,9 @@ abstract class SearchProvider {
 
   /// Short note shown in Settings.
   String? get note => null;
+
+  /// Site sits behind Cloudflare's browser check; needs a one-time Verify.
+  bool get usesCloudflare => false;
 
   Future<List<TorrentResult>> search(
     http.Client client,
@@ -595,6 +600,15 @@ final List<SearchProvider> allProviders = [
   RutorProvider(),
   Bt4gProvider(),
   InternetArchiveProvider(),
+  TheRarbgProvider(),
+  // Behind Cloudflare (one-time Verify in the app)
+  X1337Provider(),
+  ExtProvider(),
+  TorlockProvider(),
+  TorlockProvider('torrentfunk', 'TorrentFunk', 'https://www.torrentfunk.com'),
+  KickassProvider(),
+  UindexProvider(),
+  EztvProvider(),
   // Movies
   YtsProvider(),
   // Anime
@@ -619,7 +633,8 @@ class ProviderOutcome {
   final SearchProvider provider;
   final List<TorrentResult> results;
   final String? error;
-  ProviderOutcome(this.provider, this.results, this.error);
+  final CloudflareChallenge? challenge;
+  ProviderOutcome(this.provider, this.results, this.error, {this.challenge});
 }
 
 /// Runs all enabled providers in parallel; one failing provider doesn't
@@ -642,6 +657,8 @@ Future<List<ProviderOutcome>> searchAll({
             .search(client, baseUrls[p.id] ?? p.defaultBaseUrl, query, category)
             .timeout(const Duration(seconds: 20));
         return ProviderOutcome(p, r, null);
+      } on CloudflareChallenge catch (e) {
+        return ProviderOutcome(p, const [], 'needs verification', challenge: e);
       } catch (e) {
         return ProviderOutcome(p, const [], e.toString());
       }

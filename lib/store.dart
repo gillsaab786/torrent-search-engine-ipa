@@ -19,6 +19,8 @@ class AppStore extends ChangeNotifier {
   bool saveHistory = true;
   int minSeeders = 3;
   SortMode sort = SortMode.seeders;
+  int accentIndex = 0;
+  bool matchIcon = true;
 
   Future<void> load() async {
     _p = await SharedPreferences.getInstance();
@@ -58,6 +60,8 @@ class AppStore extends ChangeNotifier {
     trackers = _p.getStringList('trackers') ?? List.of(defaultTrackers);
     saveHistory = _p.getBool('saveHistory') ?? true;
     minSeeders = _p.getInt('minSeeders') ?? 3;
+    accentIndex = (_p.getInt('accent') ?? 0).clamp(0, 12);
+    matchIcon = _p.getBool('matchIcon') ?? true;
     sort = SortMode.values[(_p.getInt('sort') ?? 0).clamp(0, SortMode.values.length - 1)];
   }
 
@@ -131,6 +135,18 @@ class AppStore extends ChangeNotifier {
   void setSort(SortMode s) {
     sort = s;
     _p.setInt('sort', s.index);
+    notifyListeners();
+  }
+
+  void setAccent(int i) {
+    accentIndex = i;
+    _p.setInt('accent', i);
+    notifyListeners();
+  }
+
+  void setMatchIcon(bool v) {
+    matchIcon = v;
+    _p.setBool('matchIcon', v);
     notifyListeners();
   }
 }

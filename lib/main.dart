@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'appearance.dart';
+import 'cloudflare.dart';
 import 'screens/favourites_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
@@ -10,6 +12,7 @@ final store = AppStore();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await store.load();
+  await CloudflareSession.instance.load();
   runApp(const TorrentSearchApp());
 }
 
@@ -18,33 +21,14 @@ class TorrentSearchApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFF2EE6A6);
-    final scheme = ColorScheme.fromSeed(
-      seedColor: accent,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: accent,
-      surface: const Color(0xFF0E1116),
-      surfaceContainerHighest: const Color(0xFF1A1F27),
-    );
-    return MaterialApp(
-      title: 'Torrent Search Engine',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: scheme,
-        scaffoldBackgroundColor: const Color(0xFF0B0D11),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0B0D11),
-          surfaceTintColor: Colors.transparent,
-        ),
-        cardTheme: const CardThemeData(
-          color: Color(0xFF151A21),
-          surfaceTintColor: Colors.transparent,
-          margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        ),
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) => MaterialApp(
+        title: 'Torrent Search Engine',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(accents[store.accentIndex].color),
+        home: const HomeShell(),
       ),
-      home: const HomeShell(),
     );
   }
 }
@@ -73,7 +57,6 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        backgroundColor: const Color(0xFF0E1116),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
           NavigationDestination(

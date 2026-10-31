@@ -52,6 +52,35 @@ jobs:
           done
           ls "$SET"
 
+      - name: Add colour icons
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, shutil
+          cat = 'ios/Runner/Assets.xcassets'
+          names = []
+          for f in sorted(glob.glob('assets/icons/AppIcon-*.png')):
+              n = os.path.splitext(os.path.basename(f))[0]
+              d = os.path.join(cat, n + '.appiconset')
+              os.makedirs(d, exist_ok=True)
+              shutil.copy(f, os.path.join(d, 'icon.png'))
+              json.dump({'images': [{'filename': 'icon.png', 'idiom': 'universal',
+                                     'platform': 'ios', 'size': '1024x1024'}],
+                         'info': {'author': 'xcode', 'version': 1}},
+                        open(os.path.join(d, 'Contents.json'), 'w'))
+              names.append(n)
+          pbx = 'ios/Runner.xcodeproj/project.pbxproj'
+          s = open(pbx).read()
+          key = 'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;'
+          add = (key + '\n\t\t\t\tASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "' + ' '.join(names) + '";'
+                 '\n\t\t\t\tASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;')
+          count = s.count(key)
+          s = s.replace(key, add)
+          open(pbx, 'w').write(s)
+          print('alternate icons:', names, 'patched configs:', count)
+          if count == 0:
+              raise SystemExit('Could not find the app icon build setting')
+          PY
+
       - name: Install packages
         run: flutter pub get
 
@@ -92,6 +121,11 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
+          if /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundleAlternateIcons" Payload/Runner.app/Info.plist > alt.txt 2>&1; then
+            echo "::notice::Alternate icons in app: $(grep -c 'AppIcon-' alt.txt)"
+          else
+            echo "::warning::No alternate icons found in Info.plist"
+          fi
           zip -qry TorrentSearchEngine.ipa Payload
           ls -lh TorrentSearchEngine.ipa
 

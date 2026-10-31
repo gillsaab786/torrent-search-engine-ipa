@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:seedfinder/cloudflare.dart';
 import 'package:seedfinder/models.dart';
 import 'package:seedfinder/providers.dart';
 
@@ -134,8 +135,94 @@ void main() {
     expect(r.first.source, 'ExampleTracker');
   });
 
+  protectedParserTests();
+
   test('every source has a unique id', () {
     final ids = allProviders.map((p) => p.id).toList();
     expect(ids.toSet().length, ids.length);
+  });
+}
+
+// Parsers for the Cloudflare-protected sites. These pages can't be fetched
+// from a build server, so the samples below are small hand-written rows that
+// follow each site's documented result layout.
+void protectedParserTests() {
+  const hash = '0123456789abcdef0123456789abcdef01234567';
+
+  test('1337x list rows', () {
+    const html = '''<table><tbody>
+<tr><td class="coll-1 name"><a href="/sub/1/0/" class="icon"><i class="flaticon-x"></i></a><a href="/torrent/123/Example-Release/">Example Release 1080p</a></td>
+<td class="coll-2 seeds">812</td><td class="coll-3 leeches">40</td><td class="coll-date">Oct. 30th '26</td>
+<td class="coll-4 size mob-uploader">2.4 GB<span class="seeds">812</span></td></tr>
+</tbody></table>''';
+    final r = X1337Provider().parse(html, 'https://1337x.to');
+    expect(r.length, 1);
+    expect(r.first.name, 'Example Release 1080p');
+    expect(r.first.page, 'https://1337x.to/torrent/123/Example-Release/');
+    expect(r.first.seeders, 812);
+    expect(r.first.leechers, 40);
+    expect(r.first.size, greaterThan(2000000000));
+  });
+
+  test('Torlock / TorrentFunk list rows', () {
+    const html = '''<article><table>
+<tr><td><div><a href="/torrent/987/example-release.html"><b>Example</b> Release</a></div></td>
+<td class="td">10/30/2026</td><td class="ts">700 MB</td><td class="tul">55</td><td class="tdl">3</td></tr>
+</table></article>''';
+    final r = TorlockProvider().parse(html, 'https://www.torlock.com');
+    expect(r.single.name, 'Example Release');
+    expect(r.single.seeders, 55);
+    expect(r.single.added, DateTime(2026, 10, 30));
+  });
+
+  test('KickassTorrents list rows', () {
+    const html = '''<table><tr class="odd"><td><div class="torrentname">
+<a href="/example-release-t1.html" class="cellMainLink">Example <strong>Release</strong></a></div></td>
+<td class="nobr center">1.5 GB</td><td class="center">2</td><td class="center">1 day</td>
+<td class="green center">120</td><td class="red lasttd center">9</td></tr></table>''';
+    final r = KickassProvider().parse(html, 'https://kickasstorrents.to');
+    expect(r.single.name, 'Example Release');
+    expect(r.single.page, 'https://kickasstorrents.to/example-release-t1.html');
+    expect(r.single.seeders, 120);
+    expect(r.single.size, greaterThan(1500000000));
+  });
+
+  test('EZTV list rows carry magnets', () {
+    const html = '''<table><tr name="hover" class="forum_header_border">
+<td><a href="/ep/1/example-s01e01/" title="Example S01E01 720p (350.00 MB)" alt="x" class="epinfo">Example S01E01</a></td>
+<td><a href="magnet:?xt=urn:btih:$hash&amp;dn=Example" class="magnet" title="Magnet"></a></td>
+<td class="forum_thread_post">350.00 MB</td><td class="forum_thread_post">1h</td>
+<td class="forum_thread_post_end"><font color="green">77</font></td></tr></table>''';
+    final r = EztvProvider().parse(html, 'https://eztvx.to');
+    expect(r.single.hash, hash);
+    expect(r.single.name, 'Example S01E01 720p');
+    expect(r.single.seeders, 77);
+  });
+
+  test('UIndex and EXT read magnets from the page', () {
+    const html = '''<table><tr><td><a href="magnet:?xt=urn:btih:$hash&amp;dn=Example.Release&amp;xl=1048576">M</a>
+<a href="/details.php?id=1">Example.Release</a></td><td>1.0 MB</td><td class="sub">1 day</td>
+<td><span class="g">31</span></td><td><span class="b">2</span></td></tr></table>''';
+    final u = UindexProvider().parse(html, 'https://uindex.org');
+    expect(u.single.name, 'Example.Release');
+    expect(u.single.seeders, 31);
+    final e = ExtProvider().parse(html, 'https://ext.to');
+    expect(e.single.hash, hash);
+    expect(e.single.size, 1048576);
+  });
+
+  test('TheRARBG list rows', () {
+    final html = File('test/fixtures/therarbg.html').readAsStringSync();
+    final r = TheRarbgProvider().parse(html, 'https://therarbg.com');
+    expect(r.length, 2);
+    expect(r.first.page, startsWith('https://therarbg.com/post-detail/'));
+    expect(r.first.size, greaterThan(0));
+    expect(r.first.seeders, greaterThan(0));
+    expect(r.first.added, isNotNull);
+  });
+
+  test('Cloudflare challenge pages are recognised', () {
+    expect(looksLikeChallenge('<title>Just a moment...</title>'), isTrue);
+    expect(looksLikeChallenge('<html><body>results</body></html>'), isFalse);
   });
 }

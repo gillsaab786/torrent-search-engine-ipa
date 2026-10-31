@@ -2,8 +2,9 @@
 
 Ad-free torrent search for iPhone, with every feature included.
 
-- Searches 14 sources in parallel, results de-duplicated:
-  - General: Knaben (meta-search over 1337x, The Pirate Bay, RARBG archive and more), ApiBay, BitSearch, Torrents-CSV, LimeTorrents, TorrentDownloads, Rutor, BT4G, Internet Archive
+- Searches 22 sources in parallel, results de-duplicated:
+  - General: Knaben (meta-search over 1337x, The Pirate Bay, RARBG archive and more), ApiBay, BitSearch, Torrents-CSV, LimeTorrents, TorrentDownloads, Rutor, BT4G, TheRARBG, Internet Archive
+  - Behind Cloudflare (tap **Verify** once in the app): 1337x, EXT, Torlock, TorrentFunk, KickassTorrents, UIndex, EZTV
   - Movies: YTS
   - Anime: Nyaa, SubsPlease, TokyoTosho, AnimeTosho
   - Optional: your own Jackett or Prowlarr server (hundreds of trackers)
@@ -11,6 +12,7 @@ Ad-free torrent search for iPhone, with every feature included.
 - Voice search, search history, saved torrents
 - Open magnet in your torrent app, copy or share it
 - Editable mirror URLs and tracker list
+- Appearance: 13 accent colours, with a matching home-screen icon
 
 ## Install
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../cloudflare.dart';
 import '../main.dart';
 import '../models.dart';
 import '../providers.dart';
@@ -25,6 +26,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _lastQuery;
   List<TorrentResult> _results = [];
   List<String> _errors = [];
+  List<ProviderOutcome> _needsVerify = [];
   Set<String> _sourceFilter = {};
 
   @override
@@ -64,8 +66,9 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _loading = false;
       _results = byHash.values.toList();
+      _needsVerify = outcomes.where((o) => o.challenge != null).toList();
       _errors = outcomes
-          .where((o) => o.error != null)
+          .where((o) => o.error != null && o.challenge == null)
           .map((o) => '${o.provider.name} unavailable')
           .toList();
       _sourceFilter = {};
@@ -270,6 +273,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         on ? _sourceFilter.add(s) : _sourceFilter.remove(s)),
                   ),
               ]),
+            if (_needsVerify.isNotEmpty) _verifyBanner(),
             if (_errors.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -279,6 +283,50 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
       );
+
+  Widget _verifyBanner() {
+    final names = _needsVerify.map((o) => o.provider.name).join(', ');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 6, 12, 2),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2230),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(children: [
+        const Icon(Icons.shield_outlined, size: 20, color: Color(0xFFFFB86B)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '${_needsVerify.length} more source${_needsVerify.length == 1 ? '' : 's'} need a one-time check: $names',
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
+        TextButton(onPressed: _verifyAll, child: const Text('Verify')),
+      ]),
+    );
+  }
+
+  Future<void> _verifyAll() async {
+    var any = false;
+    for (final o in List.of(_needsVerify)) {
+      if (!mounted) return;
+      final ok = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) =>
+              VerifyScreen(siteName: o.provider.name, homepage: o.challenge!.homepage),
+        ),
+      );
+      if (ok == true) {
+        any = true;
+      } else {
+        break; // user closed the screen: stop asking
+      }
+    }
+    if (any && mounted) _search(_lastQuery);
+  }
 
   List<Widget> _historySlivers() {
     if (store.history.isEmpty) {

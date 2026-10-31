@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../appearance.dart';
+import '../cloudflare.dart';
 import '../main.dart';
 import '../providers.dart';
 
@@ -20,21 +22,38 @@ class SettingsScreen extends StatelessWidget {
                 title: Text(p.name),
                 subtitle: Text(
                   [
-                    if (p.note != null) p.note!,
+                    if (p.usesCloudflare)
+                      CloudflareSession.instance.isVerified(
+                              Uri.parse(store.baseUrls[p.id] ?? p.defaultBaseUrl).host)
+                          ? 'Verified ✓'
+                          : 'Protected by Cloudflare — not verified yet'
+                    else if (p.note != null)
+                      p.note!,
                     (store.baseUrls[p.id] ?? '').isNotEmpty
                         ? store.baseUrls[p.id]!
                         : (p.needsSetup ? 'Not set up — tap ✎ to add' : p.defaultBaseUrl),
                   ].join('\n'),
                   style: const TextStyle(color: Colors.white54),
                 ),
-                isThreeLine: p.note != null,
+                isThreeLine: p.note != null || p.usesCloudflare,
                 value: store.enabledProviders.contains(p.id),
                 onChanged: (v) => store.setProviderEnabled(p.id, v),
-                secondary: IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Set mirror URL',
-                  onPressed: () => _editMirror(context, p),
-                ),
+                secondary: p.usesCloudflare
+                    ? PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        tooltip: 'Options',
+                        onSelected: (v) =>
+                            v == 'verify' ? _verify(context, p) : _editMirror(context, p),
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'verify', child: Text('Verify now')),
+                          PopupMenuItem(value: 'mirror', child: Text('Set mirror URL')),
+                        ],
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: 'Set mirror URL',
+                        onPressed: () => _editMirror(context, p),
+                      ),
               ),
             const _Header('Results'),
             ListTile(
@@ -80,11 +99,45 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.white54),
               ),
             ),
+            const _Header('Appearance'),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text('Accent colour', style: TextStyle(fontSize: 16)),
+            ),
+            AccentPicker(
+              selected: store.accentIndex,
+              onSelected: (i) async {
+                store.setAccent(i);
+                if (store.matchIcon) await applyAppIcon(accents[i]);
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Match app icon'),
+              subtitle: const Text('Home-screen icon uses the same colour',
+                  style: TextStyle(color: Colors.white54)),
+              value: store.matchIcon,
+              onChanged: (v) async {
+                store.setMatchIcon(v);
+                await applyAppIcon(v ? accents[store.accentIndex] : accents.first);
+              },
+            ),
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _verify(BuildContext context, SearchProvider p) async {
+    final base = (store.baseUrls[p.id] ?? '').isNotEmpty ? store.baseUrls[p.id]! : p.defaultBaseUrl;
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => VerifyScreen(siteName: p.name, homepage: Uri.parse('$base/')),
+      ),
+    );
+    if (ok == true) store.setProviderEnabled(p.id, true); // refreshes the list
   }
 
   Future<void> _editMirror(BuildContext context, SearchProvider p) async {
