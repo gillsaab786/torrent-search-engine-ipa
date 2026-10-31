@@ -18,7 +18,10 @@ jobs:
           cache: true
 
       - name: Generate iOS project
-        run: flutter create --platforms=ios --org com.gillsaab --project-name seedfinder .
+        run: |
+          flutter create --platforms=ios --org com.gillsaab --project-name seedfinder .
+          # Remove the generator's sample test; it references a class this app doesn't have.
+          rm -f test/widget_test.dart
 
       - name: Configure iOS project
         run: |
@@ -35,10 +38,33 @@ jobs:
         run: flutter pub get
 
       - name: Check code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: |
+          # Post every error/warning as an annotation so it shows in the run summary.
+          set +e
+          flutter analyze --format=machine > analyze.txt 2>&1
+          STATUS=$?
+          set -e
+          cat analyze.txt
+          while IFS='|' read -r sev type code file line col len msg; do
+            case "$sev" in
+              ERROR) echo "::error file=${file#$PWD/},line=$line,col=$col::$code: $msg" ;;
+              WARNING) echo "::warning file=${file#$PWD/},line=$line,col=$col::$code: $msg" ;;
+            esac
+          done < analyze.txt
+          if grep -q '^ERROR|' analyze.txt; then exit 1; fi
 
       - name: Build app (unsigned)
-        run: flutter build ios --release --no-codesign
+        run: |
+          set +e
+          flutter build ios --release --no-codesign 2>&1 | tee build.txt
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ $STATUS -ne 0 ]; then
+            grep -iE "error[: ]" build.txt | grep -v "^warning" | head -40 | while IFS= read -r l; do
+              echo "::error::${l}"
+            done
+            exit $STATUS
+          fi
 
       - name: Package IPA
         run: |
