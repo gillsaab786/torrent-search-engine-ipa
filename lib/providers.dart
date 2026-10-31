@@ -31,6 +31,15 @@ abstract class SearchProvider {
   /// selected category isn't in this set.
   Set<Category> get categories;
 
+  /// Whether the source is switched on for new installs.
+  bool get enabledByDefault => true;
+
+  /// Sources that only work once the user enters their own URL.
+  bool get needsSetup => false;
+
+  /// Short note shown in Settings.
+  String? get note => null;
+
   Future<List<TorrentResult>> search(
     http.Client client,
     String baseUrl,
@@ -466,6 +475,92 @@ class TorrentDownloadsProvider extends SearchProvider {
   }
 }
 
+/// Your own Jackett or Prowlarr server (Torznab feed). Off until a URL is set.
+/// Paste the Torznab feed URL including the API key, e.g.
+///   http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api?apikey=KEY
+///   http://192.168.1.10:9696/1/api?apikey=KEY
+class TorznabProvider extends SearchProvider {
+  @override
+  String get id => 'torznab';
+  @override
+  String get name => 'Jackett / Prowlarr';
+  @override
+  String get defaultBaseUrl => '';
+  @override
+  bool get needsSetup => true;
+  @override
+  String? get note => 'Paste your Torznab feed URL with API key to search every tracker it has';
+  @override
+  Set<Category> get categories => Category.values.toSet();
+
+  static const _cats = {
+    Category.video: '2000,5000',
+    Category.audio: '3000',
+    Category.apps: '4000',
+    Category.games: '1000,4050',
+    Category.books: '7000',
+    Category.anime: '5070',
+  };
+
+  @override
+  Future<List<TorrentResult>> search(
+      http.Client client, String baseUrl, String query, Category category) async {
+    final base = Uri.parse(baseUrl.trim());
+    final params = Map<String, String>.from(base.queryParameters)
+      ..['t'] = 'search'
+      ..['q'] = query;
+    final cat = _cats[category];
+    if (cat != null) params['cat'] = cat;
+    final res = await client
+        .get(base.replace(queryParameters: params), headers: _headers)
+        .timeout(const Duration(seconds: 40));
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+    final doc = XmlDocument.parse(utf8.decode(res.bodyBytes, allowMalformed: true));
+    final out = <TorrentResult>[];
+    for (final item in doc.findAllElements('item')) {
+      final attrs = <String, String>{};
+      String title = '', size = '', pub = '', link = '', indexer = '';
+      for (final el in item.childElements) {
+        switch (el.name.local) {
+          case 'attr':
+            final n = el.getAttribute('name');
+            final v = el.getAttribute('value');
+            if (n != null && v != null) attrs[n] = v;
+          case 'title':
+            title = el.innerText.trim();
+          case 'size':
+            size = el.innerText.trim();
+          case 'pubDate':
+            pub = el.innerText.trim();
+          case 'link':
+            link = el.innerText.trim();
+          case 'jackettindexer':
+          case 'prowlarrindexer':
+            indexer = el.innerText.trim();
+        }
+      }
+      final hash = attrs['infohash'] ?? _hashFromMagnet(attrs['magneturl']) ?? _hashFromMagnet(link);
+      if (hash == null || hash.isEmpty) continue;
+      DateTime? added;
+      try {
+        added = _parseRfc822(pub);
+      } catch (_) {}
+      final seeders = int.tryParse(attrs['seeders'] ?? '') ?? -1;
+      final peers = int.tryParse(attrs['peers'] ?? '');
+      out.add(TorrentResult(
+        name: title,
+        infoHash: hash,
+        sizeBytes: int.tryParse(size) ?? int.tryParse(attrs['size'] ?? '') ?? 0,
+        seeders: seeders,
+        leechers: peers == null ? -1 : (seeders >= 0 ? (peers - seeders).clamp(0, peers) : peers),
+        added: added,
+        source: indexer.isEmpty ? name : indexer,
+      ));
+    }
+    return out;
+  }
+}
+
 final List<SearchProvider> allProviders = [
   KnabenProvider(),
   ApiBayProvider(),
@@ -504,6 +599,7 @@ Future<List<ProviderOutcome>> searchAll({
   try {
     final active = allProviders
         .where((p) => enabledIds.contains(p.id) && p.categories.contains(category))
+        .where((p) => !p.needsSetup || (baseUrls[p.id] ?? '').isNotEmpty)
         .toList();
     return await Future.wait(active.map((p) async {
       try {

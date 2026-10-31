@@ -12,7 +12,8 @@ class AppStore extends ChangeNotifier {
 
   List<String> history = [];
   List<TorrentResult> favourites = [];
-  Set<String> enabledProviders = allProviders.map((p) => p.id).toSet();
+  Set<String> enabledProviders =
+      allProviders.where((p) => p.enabledByDefault).map((p) => p.id).toSet();
   Map<String, String> baseUrls = {};
   List<String> trackers = List.of(defaultTrackers);
   bool saveHistory = true;
@@ -39,10 +40,14 @@ class AppStore extends ChangeNotifier {
     final allIds = allProviders.map((p) => p.id).toList();
     final known = _p.getStringList('knownProviders');
     if (known != null) {
-      enabledProviders.addAll(allIds.where((id) => !known.contains(id)));
+      enabledProviders.addAll(allProviders
+          .where((p) => p.enabledByDefault && !known.contains(p.id))
+          .map((p) => p.id));
     } else if (en != null) {
-      enabledProviders.addAll(allIds.where((id) =>
-          !const ['apibay', 'yts', 'nyaa'].contains(id)));
+      enabledProviders.addAll(allProviders
+          .where((p) =>
+              p.enabledByDefault && !const ['apibay', 'yts', 'nyaa'].contains(p.id))
+          .map((p) => p.id));
     }
     _p.setStringList('knownProviders', allIds);
     _p.setStringList('enabledProviders', enabledProviders.toList());

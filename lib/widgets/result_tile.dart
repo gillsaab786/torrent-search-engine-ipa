@@ -30,9 +30,9 @@ class ResultTile extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _Stat(icon: Icons.arrow_upward, value: '${r.seeders}', color: const Color(0xFF2EE6A6)),
+                  _Stat(icon: Icons.arrow_upward, value: r.seeders < 0 ? '?' : '${r.seeders}', color: const Color(0xFF2EE6A6)),
                   const SizedBox(width: 12),
-                  _Stat(icon: Icons.arrow_downward, value: '${r.leechers}', color: const Color(0xFFFF6B6B)),
+                  _Stat(icon: Icons.arrow_downward, value: r.leechers < 0 ? '?' : '${r.leechers}', color: const Color(0xFFFF6B6B)),
                   const SizedBox(width: 12),
                   Text(formatBytes(r.sizeBytes), style: muted),
                   const Spacer(),
@@ -99,8 +99,8 @@ Future<void> showResultSheet(BuildContext context, TorrentResult r) {
                 Text(r.name, style: Theme.of(ctx).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 row('Size', formatBytes(r.sizeBytes)),
-                row('Seeders', '${r.seeders}'),
-                row('Leechers', '${r.leechers}'),
+                row('Seeders', r.seeders < 0 ? 'Unknown' : '${r.seeders}'),
+                row('Leechers', r.leechers < 0 ? 'Unknown' : '${r.leechers}'),
                 if (r.added != null) row('Added', r.added!.toLocal().toString().split('.').first),
                 row('Source', r.source),
                 if (r.category != null) row('Category', r.category!),

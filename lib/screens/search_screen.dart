@@ -74,7 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<TorrentResult> get _visible {
     final list = _results
-        .where((r) => r.seeders >= store.minSeeders)
+        .where((r) => r.seeders < 0 || r.seeders >= store.minSeeders)
         .where((r) => _sourceFilter.isEmpty || _sourceFilter.contains(r.source))
         .toList();
     switch (store.sort) {
