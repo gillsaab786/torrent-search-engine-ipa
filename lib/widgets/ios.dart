@@ -145,8 +145,9 @@ class IosSwitch extends StatelessWidget {
       );
 }
 
-/// Horizontal filter pills: the selected one is filled with the accent.
-class PillTabs<T> extends StatelessWidget {
+/// Horizontal filter pills: the selected one is filled with the accent and
+/// is scrolled into view when it changes (for example after a swipe).
+class PillTabs<T> extends StatefulWidget {
   final List<T> items;
   final T selected;
   final String Function(T) label;
@@ -159,37 +160,61 @@ class PillTabs<T> extends StatelessWidget {
       required this.onSelected});
 
   @override
+  State<PillTabs<T>> createState() => _PillTabsState<T>();
+}
+
+class _PillTabsState<T> extends State<PillTabs<T>> {
+  final _keys = <Object?, GlobalKey>{};
+
+  GlobalKey _keyFor(T item) => _keys.putIfAbsent(item, () => GlobalKey());
+
+  @override
+  void didUpdateWidget(covariant PillTabs<T> old) {
+    super.didUpdateWidget(old);
+    if (old.selected != widget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _keyFor(widget.selected).currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(ctx,
+              alignment: 0.5, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
     return SizedBox(
       height: 46,
-      child: ListView(
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        children: [
-          for (final it in items)
+        child: Row(children: [
+          for (final it in widget.items)
             GestureDetector(
-              onTap: () => onSelected(it),
+              key: _keyFor(it),
+              onTap: () => widget.onSelected(it),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 margin: const EdgeInsets.only(right: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: it == selected ? accent : Colors.transparent,
+                  color: it == widget.selected ? accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  label(it),
+                  widget.label(it),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: it == selected ? onAccent(accent) : Colors.white,
+                    color: it == widget.selected ? onAccent(accent) : Colors.white,
                   ),
                 ),
               ),
             ),
-        ],
+        ]),
       ),
     );
   }

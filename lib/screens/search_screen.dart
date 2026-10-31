@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../appearance.dart';
@@ -143,7 +144,16 @@ class _SearchScreenState extends State<SearchScreen> {
           final visible = _visible;
           final sources = _results.map((r) => r.source).toSet().toList()..sort();
           final showHistory = _lastQuery == null || (_controller.text.isEmpty && !_loading);
-          return CustomScrollView(
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: showHistory
+                ? null
+                : (d) {
+                    final v = d.primaryVelocity ?? 0;
+                    if (v.abs() < 250) return;
+                    _switchCategory(v < 0 ? 1 : -1);
+                  },
+            child: CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
               SliverToBoxAdapter(
@@ -212,10 +222,19 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ],
+          ),
           );
         },
       ),
     );
+  }
+
+  void _switchCategory(int step) {
+    final i = Category.values.indexOf(_category) + step;
+    if (i < 0 || i >= Category.values.length) return;
+    HapticFeedback.selectionClick();
+    setState(() => _category = Category.values[i]);
+    if (_lastQuery != null && _controller.text.isNotEmpty) _search();
   }
 
   Widget _searchBar(Color accent) => Padding(
@@ -366,7 +385,21 @@ class _SearchScreenState extends State<SearchScreen> {
         itemCount: store.history.length,
         itemBuilder: (_, i) {
           final q = store.history[i];
-          return InkWell(
+          return Dismissible(
+            key: ValueKey('history-$q'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 22),
+              color: const Color(0xFFFF453A),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(CupertinoIcons.trash, color: Colors.white, size: 20),
+                SizedBox(width: 6),
+                Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+            onDismissed: (_) => store.removeHistory(q),
+            child: InkWell(
             onTap: () => _search(q),
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 13, 4, 13),
@@ -386,6 +419,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ]),
             ),
+          ),
           );
         },
       ),

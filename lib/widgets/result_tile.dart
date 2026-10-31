@@ -8,6 +8,7 @@ import '../appearance.dart';
 import '../main.dart';
 import '../models.dart';
 import 'ios.dart';
+import 'toast.dart';
 
 /// Flat list row: bold name, grey details line, chevron.
 class ResultTile extends StatelessWidget {
@@ -63,10 +64,17 @@ class ResultTile extends StatelessWidget {
   }
 }
 
-void _toast(BuildContext context, String msg) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(msg)));
+Future<void> _share(BuildContext context, String magnet, String subject) async {
+  final box = context.findRenderObject() as RenderBox?;
+  final origin = box != null && box.hasSize
+      ? box.localToGlobal(Offset.zero) & box.size
+      : const Rect.fromLTWH(0, 0, 1, 1);
+  try {
+    await Share.share(magnet, subject: subject, sharePositionOrigin: origin);
+  } catch (_) {
+    await Clipboard.setData(ClipboardData(text: magnet));
+    if (context.mounted) showToast(context, "Couldn't open Share — magnet link copied instead");
+  }
 }
 
 Future<void> showResultSheet(BuildContext context, TorrentResult r) {
@@ -120,7 +128,7 @@ Future<void> showResultSheet(BuildContext context, TorrentResult r) {
                       } catch (_) {}
                       if (!ok && ctx.mounted) {
                         await Clipboard.setData(ClipboardData(text: magnet));
-                        if (ctx.mounted) _toast(ctx, 'No torrent app found — magnet link copied');
+                        if (ctx.mounted) showToast(ctx, 'No torrent app found — magnet link copied');
                       }
                     },
                   ),
@@ -131,19 +139,25 @@ Future<void> showResultSheet(BuildContext context, TorrentResult r) {
                     leading: Icon(CupertinoIcons.doc_on_doc, color: accent, size: 22),
                     onTap: () async {
                       await Clipboard.setData(ClipboardData(text: magnet));
-                      if (ctx.mounted) _toast(ctx, 'Magnet link copied');
+                      if (ctx.mounted) showToast(ctx, 'Magnet link copied');
                     },
                   ),
-                  IosRow(
-                    title: 'Share',
-                    leading: Icon(CupertinoIcons.share, color: accent, size: 22),
-                    onTap: () => Share.share(magnet, subject: r.name),
+                  Builder(
+                    builder: (rowCtx) => IosRow(
+                      title: 'Share',
+                      leading: Icon(CupertinoIcons.share, color: accent, size: 22),
+                      onTap: () => _share(rowCtx, magnet, r.name),
+                    ),
                   ),
                   IosRow(
                     title: fav ? 'Remove from Saved' : 'Save',
                     leading: Icon(fav ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
                         color: accent, size: 22),
-                    onTap: () => store.toggleFavourite(r),
+                    onTap: () {
+                      store.toggleFavourite(r);
+                      showToast(ctx, fav ? 'Removed from Saved' : 'Saved',
+                          icon: fav ? CupertinoIcons.bookmark : CupertinoIcons.bookmark_fill);
+                    },
                   ),
                   if (r.pageUrl != null)
                     IosRow(
