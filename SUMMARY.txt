@@ -1,0 +1,57 @@
+knaben                 200 1437 https://api.knaben.org/v1 hashes=15
+apibay                 200 7652 https://apibay.org/q.php?q=ubuntu hashes=100
+torrentscsv            200 2278 https://torrents-csv.com/service/search?q=ubuntu&size=5 hashes=25
+torrentdownloads       200 5618 https://www.torrentdownloads.pro/rss.xml?type=search&search=ubuntu hashes=0
+bitsearch_eu           200 16337 https://bitsearch.eu/search?q=ubuntu hashes=40
+bitsearch_to           200 16282 https://bitsearch.eu/search?q=ubuntu hashes=40
+solidtorrents          200 16224 https://bitsearch.eu/search?q=ubuntu hashes=40
+limetorrents_lol       curl: (28) Operation timed out after 25001 milliseconds with 0 bytes received
+000 0 https://www.limetorrents.lol/search/all/ubuntu/seeds/1/ hashes=0
+limetorrents_fun       200 7081 https://www.limetorrents.fun/search/all/ubuntu/seeds/1/ hashes=0
+torrentproject         curl: (60) SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the webpage mentioned above.
+000 0 https://torrentproject.com.se/browse?t=ubuntu hashes=0
+magnetdl               522 7244 https://www.magnetdl.com/u/ubuntu/ hashes=0
+bt4g                   200 2276 https://bt4gprx.com/search?q=ubuntu&page=rss hashes=15
+glodls                 curl: (28) Connection timed out after 25002 milliseconds
+000 0 https://glodls.to/search_results.php?search=ubuntu hashes=0
+rutor                  200 10345 https://rutor.info/search/ubuntu hashes=100
+rutor_is               200 10355 https://rutor.is/search/ubuntu hashes=100
+x1337_to               403 3416 https://1337x.to/search/ubuntu/1/ hashes=0
+x1337_st               403 3349 https://1337x.st/search/ubuntu/1/ hashes=0
+x1337x_ws              403 3352 https://x1337x.ws/search/ubuntu/1/ hashes=0
+torlock                403 3586 https://www.torlock.com/all/torrents/ubuntu.html hashes=0
+ext                    403 3354 https://ext.to/search/?q=ubuntu hashes=0
+therarbg               200 19695 https://therarbg.com/get-posts/keywords:ubuntu/ hashes=0
+therarbg_to            200 19855 https://therarbg.to/get-posts/keywords:ubuntu/ hashes=0
+archive                200 1247 https://archive.org/advancedsearch.php?q=ubuntu&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=btih&fl%5B%5D=item_size&fl%5B%5D=publicdate&rows=5&output=json hashes=3
+btdig                  429 59197 https://btdig.com/search?q=ubuntu hashes=0
+torrentfunk            403 3578 https://www.torrentfunk.com/all/torrents/ubuntu.html hashes=0
+torrends               404 2461 https://torrends.to/find/?q=ubuntu hashes=0
+uindex                 403 3450 https://uindex.org/search.php?search=ubuntu hashes=0
+torrentdownload_info   curl: (28) Operation timed out after 25001 milliseconds with 0 bytes received
+000 0 https://www.torrentdownload.info/search?q=ubuntu hashes=0
+idope                  200 22100 https://bastacasinonutanspelpaus.net/ hashes=0
+academic               200 4674 https://academictorrents.com/browse.php?search=ubuntu hashes=0
+linuxtracker           200 8661 https://linuxtracker.org/torrents/?q=ubuntu hashes=0
+torrentz2              curl: (6) Could not resolve host: torrentz2.nz
+000 0 https://torrentz2.nz/search?q=ubuntu hashes=0
+kickass                403 3434 https://kickasstorrents.to/usearch/ubuntu/ hashes=0
+tgx                    200 18357 https://torrentgalaxy.online/get-posts/keywords:ubuntu/ hashes=1
+yts_mx                 curl: (6) Could not resolve host: yts.mx
+000 0 https://yts.mx/api/v2/list_movies.json?query_term=inception&limit=2 hashes=0
+yts_bz                 200 1131 https://yts.gg/api/v2/list_movies.json?query_term=inception&limit=2 hashes=0
+yts_gg                 200 1131 https://yts.gg/api/v2/list_movies.json?query_term=inception&limit=2 hashes=0
+yts_lt                 200 1131 https://yts.gg/api/v2/list_movies.json?query_term=inception&limit=2 hashes=0
+eztv_search            403 3456 https://eztvx.to/search/the-office hashes=0
+eztv_api               200 989 https://eztvx.to/api/get-torrents?imdb_id=0386676&limit=5 hashes=5
+nyaa                   200 8008 https://nyaa.si/?page=rss&q=one+piece hashes=150
+animetosho             curl: (6) Could not resolve host: feed.animetosho.org
+000 0 https://feed.animetosho.org/json?q=one%20piece hashes=0
+tokyotosho             200 12818 https://www.tokyotosho.info/rss.php?terms=one+piece hashes=133
+subsplease             200 4801 https://subsplease.org/api/?f=search&tz=UTC&s=one%20piece hashes=90
+anidex                 502 435 https://anidex.info/rss/?q=one+piece hashes=0
