@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,9 +6,11 @@ import 'package:xml/xml.dart';
 
 import 'cloudflare.dart';
 import 'models.dart';
+import 'net.dart';
 
 part 'providers_more.dart';
 part 'providers_protected.dart';
+part 'providers_custom.dart';
 
 /// Content categories shown as filter chips. Each provider maps these to
 /// its own category codes (or ignores them when it only has one kind).
@@ -46,6 +49,13 @@ abstract class SearchProvider {
 
   /// Site sits behind Cloudflare's browser check; needs a one-time Verify.
   bool get usesCloudflare => false;
+
+  /// Other addresses the site is known to run on, tried when the main one is
+  /// blocked or down.
+  List<String> get mirrors => const [];
+
+  /// Added by the user from Settings.
+  bool get isCustom => false;
 
   Future<List<TorrentResult>> search(
     http.Client client,
@@ -141,6 +151,8 @@ class YtsProvider extends SearchProvider {
   @override
   String get defaultBaseUrl => 'https://yts.gg';
   @override
+  List<String> get mirrors => const ['https://movies-api.accel.li', 'https://yts.bz', 'https://yts.lt'];
+  @override
   Set<Category> get categories => {Category.all, Category.video};
 
   @override
@@ -189,6 +201,8 @@ class NyaaProvider extends SearchProvider {
   String get name => 'Nyaa';
   @override
   String get defaultBaseUrl => 'https://nyaa.si';
+  @override
+  List<String> get mirrors => const ['https://nyaa.land'];
   @override
   Set<Category> get categories =>
       {Category.all, Category.anime, Category.video, Category.audio, Category.books};
@@ -461,6 +475,8 @@ class TorrentDownloadsProvider extends SearchProvider {
   @override
   String get defaultBaseUrl => 'https://www.torrentdownloads.pro';
   @override
+  List<String> get mirrors => const ['https://www.torrentdownloads.me'];
+  @override
   Set<Category> get categories => {Category.all};
 
   @override
@@ -589,7 +605,7 @@ class TorznabProvider extends SearchProvider {
   }
 }
 
-final List<SearchProvider> allProviders = [
+final List<SearchProvider> builtInProviders = [
   // General
   KnabenProvider(),
   ApiBayProvider(),
@@ -620,6 +636,49 @@ final List<SearchProvider> allProviders = [
   TorznabProvider(),
 ];
 
+/// Sources the user added by pasting a link (see providers_custom.dart).
+final List<SearchProvider> customProviders = [];
+
+List<SearchProvider> get allProviders => [...builtInProviders, ...customProviders];
+
+/// Called when a mirror answered after the main address failed, so the app
+/// can remember it.
+void Function(String providerId, String base)? onMirrorWorked;
+
+/// Addresses to try for a source, in order: the user's own, the default,
+/// then known mirrors.
+List<String> addressesFor(SearchProvider p, Map<String, String> baseUrls) {
+  final out = <String>[];
+  for (final a in [baseUrls[p.id] ?? '', p.defaultBaseUrl, ...p.mirrors]) {
+    final t = a.trim();
+    if (t.isNotEmpty && !out.contains(t)) out.add(t);
+  }
+  return out;
+}
+
+/// Home pages to offer on the Verify screen.
+List<Uri> verifyCandidates(SearchProvider p, Map<String, String> baseUrls) => [
+      for (final a in addressesFor(p, baseUrls)) Uri.parse(a.endsWith('/') ? a : '$a/'),
+    ];
+
+String _reason(Object e) {
+  if (e is SourceUnreachable) return e.reason;
+  if (e is TimeoutException) return 'timed out';
+  final s = e.toString();
+  final http = RegExp(r'HTTP (\d{3})').firstMatch(s);
+  if (http != null) return 'HTTP ${http.group(1)}';
+  if (s.contains('Failed host lookup') || s.contains('SocketException')) return 'blocked or offline';
+  if (s.contains('Handshake') || s.contains('CERTIFICATE')) return 'blocked';
+  if (s.contains('FormatException') || s.contains('XmlParserException')) return 'unexpected page';
+  return 'unavailable';
+}
+
+bool _worthTryingMirror(Object e) =>
+    e is SourceUnreachable ||
+    e is TimeoutException ||
+    e is http.ClientException ||
+    _reason(e) != 'unavailable';
+
 const defaultTrackers = [
   'udp://tracker.opentrackr.org:1337/announce',
   'udp://open.stealth.si:80/announce',
@@ -645,23 +704,30 @@ Future<List<ProviderOutcome>> searchAll({
   required Set<String> enabledIds,
   required Map<String, String> baseUrls,
 }) async {
-  final client = http.Client();
+  final client = Net.client();
   try {
     final active = allProviders
         .where((p) => enabledIds.contains(p.id) && p.categories.contains(category))
         .where((p) => !p.needsSetup || (baseUrls[p.id] ?? '').isNotEmpty)
         .toList();
     return await Future.wait(active.map((p) async {
-      try {
-        final r = await p
-            .search(client, baseUrls[p.id] ?? p.defaultBaseUrl, query, category)
-            .timeout(const Duration(seconds: 20));
-        return ProviderOutcome(p, r, null);
-      } on CloudflareChallenge catch (e) {
-        return ProviderOutcome(p, const [], 'needs verification', challenge: e);
-      } catch (e) {
-        return ProviderOutcome(p, const [], e.toString());
+      final addresses = addressesFor(p, baseUrls).take(4).toList();
+      Object? lastError;
+      for (var i = 0; i < addresses.length; i++) {
+        try {
+          final r = await p
+              .search(client, addresses[i], query, category)
+              .timeout(Duration(seconds: p.usesCloudflare || p.isCustom ? 40 : 20));
+          if (i > 0) onMirrorWorked?.call(p.id, addresses[i]);
+          return ProviderOutcome(p, r, null);
+        } on CloudflareChallenge catch (e) {
+          return ProviderOutcome(p, const [], 'needs verification', challenge: e);
+        } catch (e) {
+          lastError = e;
+          if (!_worthTryingMirror(e)) break;
+        }
       }
+      return ProviderOutcome(p, const [], _reason(lastError ?? 'unavailable'));
     }));
   } finally {
     client.close();

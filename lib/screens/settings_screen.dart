@@ -6,6 +6,7 @@ import '../cloudflare.dart';
 import '../main.dart';
 import '../providers.dart';
 import '../widgets/ios.dart';
+import 'add_source_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -17,6 +18,7 @@ class SettingsScreen extends StatelessWidget {
       return CloudflareSession.instance.isVerified(host) ? 'Verified ✓' : 'Needs a one-time Verify';
     }
     if (p.needsSetup && custom == null) return 'Not set up — tap to add your server';
+    if (p.isCustom) return 'Added by you · ${Uri.parse(p.defaultBaseUrl).host}';
     return custom ?? p.note ?? Uri.parse(p.defaultBaseUrl).host;
   }
 
@@ -44,6 +46,26 @@ class SettingsScreen extends StatelessWidget {
                       onChanged: (v) => store.setProviderEnabled(p.id, v),
                     ),
                   ),
+                IosRow(
+                  title: 'Add source…',
+                  leading: Icon(CupertinoIcons.plus_circle_fill,
+                      color: Theme.of(context).colorScheme.primary, size: 22),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(fullscreenDialog: true, builder: (_) => const AddSourceScreen()),
+                  ),
+                ),
+              ],
+            ),
+            IosSection(
+              header: 'Network',
+              footer: 'Looks up sites over encrypted DNS (Cloudflare / Google) instead of your '
+                  "network's own, which helps when sources show as blocked or offline. Falls back automatically.",
+              children: [
+                IosRow(
+                  title: 'Encrypted DNS',
+                  trailing: IosSwitch(value: store.encryptedDns, onChanged: store.setEncryptedDns),
+                ),
               ],
             ),
             IosSection(header: 'Results', children: [
@@ -124,12 +146,18 @@ class SettingsScreen extends StatelessWidget {
         title: Text(p.name),
         message: Text(_status(p)),
         actions: [
-          if (p.usesCloudflare)
+          if (p.usesCloudflare || p.isCustom)
             CupertinoActionSheetAction(
                 onPressed: () => Navigator.pop(ctx, 'verify'), child: const Text('Verify now')),
-          CupertinoActionSheetAction(
-              onPressed: () => Navigator.pop(ctx, 'mirror'),
-              child: Text(p.needsSetup ? 'Set server URL' : 'Set mirror URL')),
+          if (!p.isCustom)
+            CupertinoActionSheetAction(
+                onPressed: () => Navigator.pop(ctx, 'mirror'),
+                child: Text(p.needsSetup ? 'Set server URL' : 'Set mirror URL')),
+          if (p.isCustom)
+            CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () => Navigator.pop(ctx, 'delete'),
+                child: const Text('Delete source')),
         ],
         cancelButton: CupertinoActionSheetAction(
           isDefaultAction: true,
@@ -141,18 +169,20 @@ class SettingsScreen extends StatelessWidget {
     if (!context.mounted) return;
     if (choice == 'verify') await _verify(context, p);
     if (choice == 'mirror') await _editMirror(context, p);
+    if (choice == 'delete') store.removeCustomSource(p.id);
   }
 
   Future<void> _verify(BuildContext context, SearchProvider p) async {
-    final base = (store.baseUrls[p.id] ?? '').isNotEmpty ? store.baseUrls[p.id]! : p.defaultBaseUrl;
-    final ok = await Navigator.push<bool>(
+    final worked = await Navigator.push<Uri?>(
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => VerifyScreen(siteName: p.name, homepage: Uri.parse('$base/')),
+        builder: (_) => VerifyScreen(siteName: p.name, candidates: verifyCandidates(p, store.baseUrls)),
       ),
     );
-    if (ok == true) store.setProviderEnabled(p.id, true); // refreshes the list
+    if (worked == null) return;
+    if (!p.isCustom && worked.origin != p.defaultBaseUrl) store.setBaseUrl(p.id, worked.origin);
+    store.setProviderEnabled(p.id, true); // also refreshes the list
   }
 
   Future<void> _editMirror(BuildContext context, SearchProvider p) async {

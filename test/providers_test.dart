@@ -136,6 +136,7 @@ void main() {
   });
 
   protectedParserTests();
+  customSourceTests();
 
   test('every source has a unique id', () {
     final ids = allProviders.map((p) => p.id).toList();
@@ -224,5 +225,55 @@ void protectedParserTests() {
   test('Cloudflare challenge pages are recognised', () {
     expect(looksLikeChallenge('<title>Just a moment...</title>'), isTrue);
     expect(looksLikeChallenge('<html><body>results</body></html>'), isFalse);
+  });
+}
+
+void customSourceTests() {
+  const hash = '0123456789abcdef0123456789abcdef01234567';
+
+  test('pasted homepage gives several search patterns', () {
+    final t = CustomProvider.candidateTemplates('example-index.org');
+    expect(t.first, 'https://example-index.org/search?q={q}');
+    expect(t.length, greaterThan(5));
+  });
+
+  test('pasted results page for "test" becomes a template', () {
+    expect(CustomProvider.candidateTemplates('https://site.example/search/test/1/'),
+        ['https://site.example/search/{q}/1/']);
+    expect(CustomProvider.candidateTemplates('https://site.example/s.php?q=test&cat=0'),
+        ['https://site.example/s.php?q={q}&cat=0']);
+  });
+
+  test('search address encodes the query for path or query string', () {
+    final path = CustomProvider(id: 'a', name: 'A', template: 'https://x.example/search/{q}/1/');
+    expect(path.searchUri('', 'big buck').toString(), 'https://x.example/search/big%20buck/1/');
+    final qs = CustomProvider(id: 'b', name: 'B', template: 'https://x.example/find?q={q}');
+    expect(qs.searchUri('', 'big buck').toString(), 'https://x.example/find?q=big+buck');
+  });
+
+  test('magnets on a page are harvested with names and sizes', () {
+    const html = '<a href="magnet:?xt=urn:btih:$hash&amp;dn=Big.Buck.Bunny&amp;xl=2048">x</a>'
+        '<a href="magnet:?xt=urn:btih:$hash">dup</a>';
+    final r = CustomProvider.harvest(html, 'x.example');
+    expect(r.single.name, 'Big.Buck.Bunny');
+    expect(r.single.size, 2048);
+  });
+
+  test('result-page links are found when there are no magnets', () {
+    const html = '<a href="/torrent/12/big-buck-bunny/">Big Buck Bunny 1080p</a>'
+        '<a href="/about">About us page</a>'
+        '<a href="https://other.example/torrent/1/">Big Buck Bunny elsewhere</a>';
+    final links =
+        CustomProvider.detailLinks(html, Uri.parse('https://x.example/search?q=big+buck'), 'big buck');
+    expect(links.single.$1, 'https://x.example/torrent/12/big-buck-bunny/');
+    expect(links.single.$2, 'Big Buck Bunny 1080p');
+  });
+
+  test('custom sources round-trip through settings storage', () {
+    final c = CustomProvider(id: 'custom_1', name: 'Mine', template: 'https://x.example/?s={q}');
+    final back = CustomProvider.fromJson(c.toJson());
+    expect(back.template, c.template);
+    expect(back.isCustom, isTrue);
+    expect(back.defaultBaseUrl, 'https://x.example');
   });
 }

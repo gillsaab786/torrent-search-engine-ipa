@@ -72,7 +72,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _needsVerify = outcomes.where((o) => o.challenge != null).toList();
       _errors = outcomes
           .where((o) => o.error != null && o.challenge == null)
-          .map((o) => '${o.provider.name} unavailable')
+          .map((o) => '${o.provider.name}: ${o.error}')
           .toList();
       _sourceFilter = {};
     });
@@ -309,14 +309,24 @@ class _SearchScreenState extends State<SearchScreen> {
     var any = false;
     for (final o in List.of(_needsVerify)) {
       if (!mounted) return;
-      final ok = await Navigator.push<bool>(
+      final worked = await Navigator.push<Uri?>(
         context,
         MaterialPageRoute(
           fullscreenDialog: true,
-          builder: (_) => VerifyScreen(siteName: o.provider.name, homepage: o.challenge!.homepage),
+          builder: (_) => VerifyScreen(
+            siteName: o.provider.name,
+            candidates: [
+              o.challenge!.homepage,
+              ...verifyCandidates(o.provider, store.baseUrls)
+                  .where((u) => u.host != o.challenge!.homepage.host),
+            ],
+          ),
         ),
       );
-      if (ok == true) {
+      if (worked != null) {
+        if (!o.provider.isCustom && worked.origin != o.provider.defaultBaseUrl) {
+          store.setBaseUrl(o.provider.id, worked.origin);
+        }
         any = true;
       } else {
         break; // user closed the screen: stop asking

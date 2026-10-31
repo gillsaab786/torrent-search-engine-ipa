@@ -111,6 +111,8 @@ class X1337Provider extends _ProtectedProvider {
   String get name => '1337x';
   @override
   String get defaultBaseUrl => 'https://1337x.to';
+  @override
+  List<String> get mirrors => const ['https://1337x.st', 'https://x1337x.ws', 'https://x1337x.eu', 'https://x1337x.cc', 'https://1337x.so'];
 
   @override
   Uri searchUri(String base, String query) => Uri.parse(
@@ -176,6 +178,8 @@ class KickassProvider extends _ProtectedProvider {
   String get name => 'KickassTorrents';
   @override
   String get defaultBaseUrl => 'https://kickasstorrents.to';
+  @override
+  List<String> get mirrors => const ['https://katcr.to', 'https://kickass.sx'];
 
   @override
   Uri searchUri(String base, String query) =>
@@ -214,6 +218,8 @@ class EztvProvider extends _ProtectedProvider {
   String get name => 'EZTV';
   @override
   String get defaultBaseUrl => 'https://eztvx.to';
+  @override
+  List<String> get mirrors => const ['https://eztv1.xyz', 'https://eztv.wf', 'https://eztv.tf', 'https://eztv.yt'];
   @override
   Set<Category> get categories => {Category.all, Category.video};
 
@@ -321,6 +327,8 @@ class TheRarbgProvider extends _ProtectedProvider {
   String get name => 'TheRARBG';
   @override
   String get defaultBaseUrl => 'https://therarbg.com';
+  @override
+  List<String> get mirrors => const ['https://therarbg.to'];
   @override
   bool get usesCloudflare => false;
   @override

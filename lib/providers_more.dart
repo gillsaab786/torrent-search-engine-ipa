@@ -52,6 +52,8 @@ class BitSearchProvider extends SearchProvider {
   @override
   String get defaultBaseUrl => 'https://bitsearch.eu';
   @override
+  List<String> get mirrors => const ['https://bitsearch.to'];
+  @override
   Set<Category> get categories => {Category.all};
 
   static final _title = RegExp(r'<a href="(/torrent/[^"]*)"[^>]*>\s*([^<]+?)\s*</a>');
@@ -96,6 +98,8 @@ class LimeTorrentsProvider extends SearchProvider {
   String get name => 'LimeTorrents';
   @override
   String get defaultBaseUrl => 'https://www.limetorrents.fun';
+  @override
+  List<String> get mirrors => const ['https://www.limetorrents.lol', 'https://www.limetorrents.info'];
   @override
   Set<Category> get categories => {Category.all};
 
@@ -145,6 +149,8 @@ class RutorProvider extends SearchProvider {
   String get name => 'Rutor';
   @override
   String get defaultBaseUrl => 'https://rutor.info';
+  @override
+  List<String> get mirrors => const ['https://rutor.is'];
   @override
   Set<Category> get categories => {Category.all};
 
@@ -201,6 +207,8 @@ class Bt4gProvider extends SearchProvider {
   String get name => 'BT4G';
   @override
   String get defaultBaseUrl => 'https://bt4gprx.com';
+  @override
+  List<String> get mirrors => const ['https://bt4g.org'];
   @override
   Set<Category> get categories => {Category.all};
   @override

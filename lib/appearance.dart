@@ -8,7 +8,10 @@ import 'package:flutter/material.dart';
 class Accent {
   final String name;
   final Color color;
-  const Accent(this.name, this.color);
+  final String? label;
+  const Accent(this.name, this.color, {this.label});
+
+  String get displayName => label ?? name;
 
   /// Alternate icon name in the asset catalog (null = primary icon).
   String? get iconName => this == accents.first ? null : 'AppIcon-$name';
@@ -22,6 +25,7 @@ const accents = <Accent>[
   Accent('Purple', Color(0xFFBF5AF2)),
   Accent('Pink', Color(0xFFFF375F)),
   Accent('Red', Color(0xFFFF453A)),
+  Accent('DarkRed', Color(0xFFB01220), label: 'Dark Red'),
   Accent('Orange', Color(0xFFFF9F0A)),
   Accent('Yellow', Color(0xFFFFD60A)),
   Accent('Green', Color(0xFF30D158)),
@@ -134,7 +138,7 @@ class AccentPicker extends StatelessWidget {
           final a = accents[i];
           final isSel = i == selected;
           return Semantics(
-            label: '${a.name} colour',
+            label: '${a.displayName} colour',
             selected: isSel,
             button: true,
             child: GestureDetector(
