@@ -8,10 +8,18 @@ Ad-free torrent search for iPhone, with every feature included.
 - Open magnet in your torrent app, copy or share it
 - Editable mirror URLs and tracker list
 
-## Getting the IPA
+## Install
 
-Every push to `main` builds an unsigned IPA on GitHub's macOS runners.
-Open **Actions → Build iOS IPA → latest run → Artifacts → Seedfinder-ipa**,
-download and unzip it, then install `Seedfinder.ipa` with Sideloadly using your Apple ID.
+**Download:** [Seedfinder.ipa (latest)](../../releases/latest/download/Seedfinder.ipa)
+
+### Free, auto-refreshing (recommended): SideStore
+1. Set up SideStore on your iPhone once (see sidestore.io; needs a PC for the first setup).
+2. In SideStore → **Sources → +**, add:
+   `https://github.com/gillsaab786/torrent-search-engine-ipa/releases/latest/download/source.json`
+3. Install Seedfinder from the source. SideStore re-signs it every 7 days on the phone, and offers updates when a new version is released.
+
+### From a PC: Sideloadly
+Download the IPA above, open Sideloadly, plug in your iPhone, drag the IPA in and sign in with your Apple ID.
+With a free Apple ID the app must be re-installed every 7 days.
 
 Search results come from public indexes. You are responsible for what you download.
