@@ -117,7 +117,7 @@ class X1337Provider extends _ProtectedProvider {
       '$base/sort-search/${Uri.encodeComponent(query).replaceAll('%20', '+')}/seeders/desc/1/');
 
   static final _row = RegExp(r'<tr>(.*?)</tr>', dotAll: true);
-  static final _link = RegExp(r'<a href="(/torrent/\d+/[^"]*)">([^<]+)</a>');
+  static final _link = RegExp(r'<a\s+href="(/torrent/\d+/[^"]*)">([^<]+)</a>');
   static final _seed = RegExp(r'<td class="coll-2 seeds">([\d,]+)</td>');
   static final _leech = RegExp(r'<td class="coll-3 leeches">([\d,]+)</td>');
   static final _size = RegExp(r'<td class="coll-4 size[^"]*">([^<]+)<');
@@ -150,7 +150,7 @@ class TorlockProvider extends _ProtectedProvider {
       '$base/all/torrents/${Uri.encodeComponent(query.trim().replaceAll(RegExp(r'\s+'), '-'))}.html?sort=seeds');
 
   static final _row = RegExp(r'<tr[^>]*>(.*?)</tr>', dotAll: true);
-  static final _link = RegExp(r'<a href="(/torrent/\d+/[^"]+\.html)"[^>]*>(.*?)</a>', dotAll: true);
+  static final _link = RegExp(r'<a\s+href="(/torrent/\d+/[^"]+\.html)"[^>]*>(.*?)</a>', dotAll: true);
   static final _date = RegExp(r'<td class="td">([^<]+)</td>');
   static final _size = RegExp(r'<td class="ts">([^<]+)</td>');
   static final _seed = RegExp(r'<td class="tul">([\d,]+)</td>');
@@ -182,7 +182,7 @@ class KickassProvider extends _ProtectedProvider {
       Uri.parse('$base/usearch/${Uri.encodeComponent(query)}/');
 
   static final _row = RegExp(r'<tr class="(?:odd|even)"[^>]*>(.*?)</tr>', dotAll: true);
-  static final _link = RegExp(r'<a href="([^"]+)"\s+class="cellMainLink">(.*?)</a>', dotAll: true);
+  static final _link = RegExp(r'<a\s+href="([^"]+)"\s+class="cellMainLink">(.*?)</a>', dotAll: true);
   static final _seed = RegExp(r'<td class="green center">\s*([\d,]+)');
   static final _leech = RegExp(r'<td class="red lasttd center">\s*([\d,]+)');
 
@@ -222,8 +222,8 @@ class EztvProvider extends _ProtectedProvider {
       '$base/search/${Uri.encodeComponent(query.trim().replaceAll(RegExp(r'\s+'), '-'))}');
 
   static final _row = RegExp(r'<tr[^>]*class="forum_header_border"[^>]*>(.*?)</tr>', dotAll: true);
-  static final _magnet = RegExp(r'<a href="(magnet:[^"]+)"[^>]*class="magnet"');
-  static final _info = RegExp(r'<a href="([^"]+)"[^>]*title="([^"]+)"[^>]*class="epinfo"');
+  static final _magnet = RegExp(r'<a\s+href="(magnet:[^"]+)"[^>]*class="magnet"');
+  static final _info = RegExp(r'<a\s+href="([^"]+)"[^>]*title="([^"]+)"[^>]*class="epinfo"');
   static final _seed = RegExp(r'<font color="green">([\d,]+)</font>');
 
   @override
@@ -334,11 +334,11 @@ class TheRarbgProvider extends _ProtectedProvider {
       '$base/get-posts/order:-se:keywords:${Uri.encodeComponent(query.trim())}/');
 
   static final _row = RegExp(r'<tr class="list-entry">(.*?)</tr>', dotAll: true);
-  static final _link = RegExp(r'<a href="(/post-detail/[^"]+)"[^>]*>([^<]+)</a>');
-  static final _date = RegExp(r'class="hideCell" data-order="(\d+)"');
-  static final _size = RegExp(r'class="sizeCell" data-order="(\d+)"');
-  static final _seed = RegExp(r'color: green">([\d,]+)<');
-  static final _leech = RegExp(r'color: red">([\d,]+)<');
+  static final _link = RegExp(r'<a\s+href="(/post-detail/[^"]+)"[^>]*>\s*([^<]+?)\s*</a>');
+  static final _date = RegExp(r'class="hideCell"\s+data-order="(\d+)"');
+  static final _size = RegExp(r'class="sizeCell"\s+data-order="(\d+)"');
+  static final _seed = RegExp(r'color:\s*green"\s*>\s*([\d,]+)\s*<');
+  static final _leech = RegExp(r'color:\s*red"\s*>\s*([\d,]+)\s*<');
 
   @override
   List<_Row> parse(String html, String base) => [
