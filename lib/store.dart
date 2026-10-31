@@ -16,7 +16,7 @@ class AppStore extends ChangeNotifier {
   Map<String, String> baseUrls = {};
   List<String> trackers = List.of(defaultTrackers);
   bool saveHistory = true;
-  int minSeeders = 0;
+  int minSeeders = 3;
   SortMode sort = SortMode.seeders;
 
   Future<void> load() async {
@@ -34,13 +34,25 @@ class AppStore extends ChangeNotifier {
         .toList();
     final en = _p.getStringList('enabledProviders');
     if (en != null) enabledProviders = en.toSet();
+    // Turn on sources added in app updates, without re-enabling ones the
+    // user switched off.
+    final allIds = allProviders.map((p) => p.id).toList();
+    final known = _p.getStringList('knownProviders');
+    if (known != null) {
+      enabledProviders.addAll(allIds.where((id) => !known.contains(id)));
+    } else if (en != null) {
+      enabledProviders.addAll(allIds.where((id) =>
+          !const ['apibay', 'yts', 'nyaa'].contains(id)));
+    }
+    _p.setStringList('knownProviders', allIds);
+    _p.setStringList('enabledProviders', enabledProviders.toList());
     final bu = _p.getString('baseUrls');
     if (bu != null) {
       baseUrls = Map<String, String>.from(jsonDecode(bu) as Map);
     }
     trackers = _p.getStringList('trackers') ?? List.of(defaultTrackers);
     saveHistory = _p.getBool('saveHistory') ?? true;
-    minSeeders = _p.getInt('minSeeders') ?? 0;
+    minSeeders = _p.getInt('minSeeders') ?? 3;
     sort = SortMode.values[(_p.getInt('sort') ?? 0).clamp(0, SortMode.values.length - 1)];
   }
 

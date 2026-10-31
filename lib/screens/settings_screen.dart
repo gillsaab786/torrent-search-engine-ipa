@@ -65,7 +65,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             const _Header('About'),
             const ListTile(
-              title: Text('Seedfinder 1.0'),
+              title: Text('Torrent Search Engine'),
               subtitle: Text(
                 'No ads. All features included. Results come from public indexes; '
                 'you are responsible for what you download.',

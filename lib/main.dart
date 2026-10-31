@@ -10,11 +10,11 @@ final store = AppStore();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await store.load();
-  runApp(const SeedfinderApp());
+  runApp(const TorrentSearchApp());
 }
 
-class SeedfinderApp extends StatelessWidget {
-  const SeedfinderApp({super.key});
+class TorrentSearchApp extends StatelessWidget {
+  const TorrentSearchApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class SeedfinderApp extends StatelessWidget {
       surfaceContainerHighest: const Color(0xFF1A1F27),
     );
     return MaterialApp(
-      title: 'Seedfinder',
+      title: 'Torrent Search Engine',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

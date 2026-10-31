@@ -258,10 +258,222 @@ DateTime _parseRfc822(String s) {
       int.parse(p[4]), int.parse(p[5]), int.parse(p[6]));
 }
 
+String? _hashFromMagnet(String? magnet) {
+  if (magnet == null) return null;
+  final m = RegExp(r'urn:btih:([a-zA-Z0-9]{32,40})').firstMatch(magnet);
+  return m?.group(1);
+}
+
+int _toInt(dynamic v) {
+  if (v is num) return v.toInt();
+  return int.tryParse(v?.toString() ?? '') ?? 0;
+}
+
+DateTime? _toDate(dynamic v) {
+  if (v == null) return null;
+  if (v is num) {
+    // Seconds vs milliseconds.
+    final n = v.toInt();
+    return DateTime.fromMillisecondsSinceEpoch(n > 100000000000 ? n : n * 1000);
+  }
+  return DateTime.tryParse(v.toString());
+}
+
+/// Meta-search API that aggregates many public trackers
+/// (1337x, TorrentGalaxy, RARBG archive, The Pirate Bay, Nyaa and more).
+class KnabenProvider extends SearchProvider {
+  @override
+  String get id => 'knaben';
+  @override
+  String get name => 'Knaben';
+  @override
+  String get defaultBaseUrl => 'https://api.knaben.org/v1';
+  @override
+  Set<Category> get categories => {Category.all};
+
+  @override
+  Future<List<TorrentResult>> search(
+      http.Client client, String baseUrl, String query, Category category) async {
+    final res = await client.post(
+      Uri.parse(baseUrl),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'search_type': '100%',
+        'search_field': 'title',
+        'query': query,
+        'order_by': 'seeders',
+        'order_direction': 'desc',
+        'size': 150,
+        'hide_unsafe': true,
+        'hide_xxx': true,
+      }),
+    );
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+    final data = jsonDecode(utf8.decode(res.bodyBytes));
+    final List hits = data is Map && data['hits'] is List ? data['hits'] as List : const [];
+    final out = <TorrentResult>[];
+    for (final h in hits) {
+      if (h is! Map) continue;
+      final hash = (h['hash'] ?? _hashFromMagnet(h['magnetUrl']?.toString()) ?? '').toString();
+      if (hash.isEmpty) continue;
+      final tracker = (h['tracker'] ?? '').toString();
+      out.add(TorrentResult(
+        name: (h['title'] ?? '').toString(),
+        infoHash: hash,
+        sizeBytes: _toInt(h['bytes'] ?? h['size']),
+        seeders: _toInt(h['seeders']),
+        leechers: _toInt(h['peers'] ?? h['leechers']),
+        added: _toDate(h['date']),
+        source: tracker.isEmpty ? name : tracker,
+        pageUrl: h['details']?.toString(),
+      ));
+    }
+    return out;
+  }
+}
+
+/// Large open index of DHT-discovered torrents with a JSON API.
+class TorrentsCsvProvider extends SearchProvider {
+  @override
+  String get id => 'torrentscsv';
+  @override
+  String get name => 'Torrents-CSV';
+  @override
+  String get defaultBaseUrl => 'https://torrents-csv.com';
+  @override
+  Set<Category> get categories => {Category.all};
+
+  @override
+  Future<List<TorrentResult>> search(
+      http.Client client, String baseUrl, String query, Category category) async {
+    final uri = Uri.parse('${_trimSlash(baseUrl)}/service/search')
+        .replace(queryParameters: {'q': query, 'size': '100'});
+    final res = await client.get(uri, headers: _headers);
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+    final data = jsonDecode(utf8.decode(res.bodyBytes));
+    final List list = data is Map && data['torrents'] is List
+        ? data['torrents'] as List
+        : (data is List ? data : const []);
+    final out = <TorrentResult>[];
+    for (final t in list) {
+      if (t is! Map) continue;
+      final hash = (t['infohash'] ?? '').toString();
+      if (hash.isEmpty) continue;
+      out.add(TorrentResult(
+        name: (t['name'] ?? '').toString(),
+        infoHash: hash,
+        sizeBytes: _toInt(t['size_bytes']),
+        seeders: _toInt(t['seeders']),
+        leechers: _toInt(t['leechers']),
+        added: _toDate(t['created_unix']),
+        source: name,
+      ));
+    }
+    return out;
+  }
+}
+
+/// Anime index with a JSON feed.
+class AnimeToshoProvider extends SearchProvider {
+  @override
+  String get id => 'animetosho';
+  @override
+  String get name => 'AnimeTosho';
+  @override
+  String get defaultBaseUrl => 'https://feed.animetosho.org';
+  @override
+  Set<Category> get categories => {Category.all, Category.anime};
+
+  @override
+  Future<List<TorrentResult>> search(
+      http.Client client, String baseUrl, String query, Category category) async {
+    final uri = Uri.parse('${_trimSlash(baseUrl)}/json')
+        .replace(queryParameters: {'q': query});
+    final res = await client.get(uri, headers: _headers);
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+    final data = jsonDecode(utf8.decode(res.bodyBytes));
+    final List list = data is List ? data : const [];
+    final out = <TorrentResult>[];
+    for (final t in list) {
+      if (t is! Map) continue;
+      final hash = (t['info_hash'] ?? _hashFromMagnet(t['magnet_uri']?.toString()) ?? '')
+          .toString();
+      if (hash.isEmpty) continue;
+      out.add(TorrentResult(
+        name: (t['title'] ?? '').toString(),
+        infoHash: hash,
+        sizeBytes: _toInt(t['total_size']),
+        seeders: _toInt(t['seeders']),
+        leechers: _toInt(t['leechers']),
+        added: _toDate(t['timestamp']),
+        source: name,
+        category: 'Anime',
+        pageUrl: t['link']?.toString(),
+      ));
+    }
+    return out;
+  }
+}
+
+/// General index with a search RSS feed.
+class TorrentDownloadsProvider extends SearchProvider {
+  @override
+  String get id => 'torrentdownloads';
+  @override
+  String get name => 'TorrentDownloads';
+  @override
+  String get defaultBaseUrl => 'https://www.torrentdownloads.pro';
+  @override
+  Set<Category> get categories => {Category.all};
+
+  @override
+  Future<List<TorrentResult>> search(
+      http.Client client, String baseUrl, String query, Category category) async {
+    final uri = Uri.parse('${_trimSlash(baseUrl)}/rss.xml')
+        .replace(queryParameters: {'type': 'search', 'search': query});
+    final res = await client.get(uri, headers: _headers);
+    if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+    final doc = XmlDocument.parse(utf8.decode(res.bodyBytes, allowMalformed: true));
+    final out = <TorrentResult>[];
+    for (final item in doc.findAllElements('item')) {
+      String field(String local) {
+        for (final el in item.childElements) {
+          if (el.name.local == local) return el.innerText.trim();
+        }
+        return '';
+      }
+
+      final hash = field('info_hash');
+      if (hash.isEmpty) continue;
+      DateTime? added;
+      try {
+        added = _parseRfc822(field('pubDate'));
+      } catch (_) {}
+      final rawSize = field('size');
+      out.add(TorrentResult(
+        name: field('title'),
+        infoHash: hash,
+        sizeBytes: int.tryParse(rawSize) ?? _parseSize(rawSize),
+        seeders: int.tryParse(field('seeders')) ?? 0,
+        leechers: int.tryParse(field('leechers')) ?? 0,
+        added: added,
+        source: name,
+        category: field('category').isEmpty ? null : field('category'),
+        pageUrl: field('link').isEmpty ? null : field('link'),
+      ));
+    }
+    return out;
+  }
+}
+
 final List<SearchProvider> allProviders = [
+  KnabenProvider(),
   ApiBayProvider(),
+  TorrentsCsvProvider(),
   YtsProvider(),
   NyaaProvider(),
+  AnimeToshoProvider(),
+  TorrentDownloadsProvider(),
 ];
 
 const defaultTrackers = [

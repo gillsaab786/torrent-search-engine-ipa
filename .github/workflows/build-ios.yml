@@ -32,9 +32,9 @@ jobs:
       - name: Configure iOS project
         run: |
           PLIST=ios/Runner/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Seedfinder" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Seedfinder" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Seedfinder uses the microphone for voice search.'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Seedfinder converts your voice into a search query.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Torrent Search Engine'" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 'Torrent Search Engine'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Used for voice search.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Turns your voice into a search query.'" $PLIST
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes:0 string magnet" $PLIST
           sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile || true
@@ -86,23 +86,23 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -qry Seedfinder.ipa Payload
-          ls -lh Seedfinder.ipa
+          zip -qry TorrentSearchEngine.ipa Payload
+          ls -lh TorrentSearchEngine.ipa
 
       - name: Write SideStore / AltStore source
         run: |
           REPO="${{ github.repository }}"
-          SIZE=$(stat -f%z Seedfinder.ipa)
+          SIZE=$(stat -f%z TorrentSearchEngine.ipa)
           DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           cat > source.json <<JSON
           {
-            "name": "Seedfinder",
+            "name": "Torrent Search Engine",
             "identifier": "com.gillsaab.seedfinder.source",
             "subtitle": "Ad-free torrent search",
             "iconURL": "https://raw.githubusercontent.com/$REPO/main/assets/icon.png",
             "apps": [
               {
-                "name": "Seedfinder",
+                "name": "Torrent Search Engine",
                 "bundleIdentifier": "com.gillsaab.seedfinder",
                 "developerName": "gillsaab786",
                 "subtitle": "Ad-free torrent search",
@@ -119,7 +119,7 @@ jobs:
                     "buildVersion": "${{ github.run_number }}",
                     "date": "$DATE",
                     "size": $SIZE,
-                    "downloadURL": "https://github.com/$REPO/releases/download/v$APP_VERSION/Seedfinder.ipa",
+                    "downloadURL": "https://github.com/$REPO/releases/download/v$APP_VERSION/TorrentSearchEngine.ipa",
                     "minOSVersion": "13.0"
                   }
                 ]
@@ -134,7 +134,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$APP_VERSION" Seedfinder.ipa source.json \
-            --title "Seedfinder $APP_VERSION" \
-            --notes "Download **Seedfinder.ipa** below and install with SideStore, AltStore or Sideloadly." \
+          gh release create "v$APP_VERSION" TorrentSearchEngine.ipa source.json \
+            --title "Torrent Search Engine $APP_VERSION" \
+            --notes "Download **TorrentSearchEngine.ipa** below and install with SideStore, AltStore or Sideloadly." \
             --latest
