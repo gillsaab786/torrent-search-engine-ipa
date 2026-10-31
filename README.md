@@ -9,7 +9,7 @@ Ad-free torrent search for iPhone, with every feature included.
   - Anime: Nyaa, SubsPlease, TokyoTosho, AnimeTosho
   - Optional: your own Jackett or Prowlarr server (hundreds of trackers)
 - Categories, sort (seeders / size / newest / name), source filter, minimum seeders (default 3)
-- Voice search, search history, saved torrents
+- Search history (swipe to delete), saved torrents, swipe between categories
 - Open magnet in your torrent app, copy or share it
 - Editable mirror URLs and tracker list
 - Appearance: 13 accent colours, with a matching home-screen icon

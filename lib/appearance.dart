@@ -13,8 +13,9 @@ class Accent {
 
   String get displayName => label ?? name;
 
-  /// Alternate icon name in the asset catalog (null = primary icon).
-  String? get iconName => this == accents.first ? null : 'AppIcon-$name';
+  /// Alternate icon in the asset catalog. The default colour has one too
+  /// (identical to the primary icon) so switching back to it is reliable.
+  String get iconName => 'AppIcon-$name';
 }
 
 const accents = <Accent>[

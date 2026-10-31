@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 
 import '../appearance.dart';
 import '../cloudflare.dart';
@@ -21,9 +20,6 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
-  final _speech = SpeechToText();
-  bool _speechReady = false;
-  bool _listening = false;
 
   Category _category = Category.all;
   bool _loading = false;
@@ -95,42 +91,6 @@ class _SearchScreenState extends State<SearchScreen> {
         list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     }
     return list;
-  }
-
-  Future<void> _toggleVoice() async {
-    if (_listening) {
-      await _speech.stop();
-      setState(() => _listening = false);
-      return;
-    }
-    if (!_speechReady) {
-      _speechReady = await _speech.initialize(
-        onStatus: (s) {
-          if ((s == 'done' || s == 'notListening') && mounted) {
-            setState(() => _listening = false);
-          }
-        },
-        onError: (_) {
-          if (mounted) setState(() => _listening = false);
-        },
-      );
-    }
-    if (!_speechReady) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Voice search unavailable — allow Microphone and Speech Recognition in iOS Settings'),
-            behavior: SnackBarBehavior.floating));
-      }
-      return;
-    }
-    setState(() => _listening = true);
-    await _speech.listen(onResult: (r) {
-      _controller.text = r.recognizedWords;
-      if (r.finalResult) {
-        setState(() => _listening = false);
-        _search();
-      }
-    });
   }
 
   @override
@@ -242,7 +202,7 @@ class _SearchScreenState extends State<SearchScreen> {
         child: CupertinoSearchTextField(
           controller: _controller,
           focusNode: _focus,
-          placeholder: _listening ? 'Listening…' : 'Search torrents',
+          placeholder: 'Search torrents',
           style: const TextStyle(color: Colors.white, fontSize: 17),
           backgroundColor: Ios.fill,
           itemColor: Ios.secondaryLabel,
@@ -252,10 +212,6 @@ class _SearchScreenState extends State<SearchScreen> {
           onSuffixTap: () => setState(() => _controller.clear()),
           suffixMode: OverlayVisibilityMode.editing,
           suffixIcon: const Icon(CupertinoIcons.xmark_circle_fill),
-        ).withMic(
-          listening: _listening,
-          accent: accent,
-          onTap: _toggleVoice,
         ),
       );
 
@@ -425,18 +381,4 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     ];
   }
-}
-
-extension on CupertinoSearchTextField {
-  /// Search field with a microphone button beside it.
-  Widget withMic({required bool listening, required Color accent, required VoidCallback onTap}) =>
-      Row(children: [
-        Expanded(child: this),
-        CupertinoButton(
-          padding: const EdgeInsets.only(left: 10),
-          onPressed: onTap,
-          child: Icon(listening ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
-              color: accent, size: 26),
-        ),
-      ]);
 }

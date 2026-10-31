@@ -97,7 +97,9 @@ if __name__ == '__main__':
     os.makedirs(os.path.join(root, 'assets', 'icons'), exist_ok=True)
     for i, (name, col) in enumerate(PALETTE):
         im = icon(col)
-        path = (os.path.join(root, 'assets', 'icon.png') if i == 0
-                else os.path.join(root, 'assets', 'icons', f'AppIcon-{name}.png'))
-        im.save(path, optimize=True)
+        # Every colour, including the default, is also an alternate icon, so
+        # switching back to the default never relies on iOS's reset call.
+        if i == 0:
+            im.save(os.path.join(root, 'assets', 'icon.png'), optimize=True)
+        im.save(os.path.join(root, 'assets', 'icons', f'AppIcon-{name}.png'), optimize=True)
     print('wrote', len(PALETTE), 'icons')

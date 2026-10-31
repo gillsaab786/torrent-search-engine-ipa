@@ -36,8 +36,6 @@ jobs:
         run: |
           PLIST=ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Torrent Search Engine'" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 'Torrent Search Engine'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Used for voice search.'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Turns your voice into a search query.'" $PLIST
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes:0 string magnet" $PLIST
           sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile || true
@@ -155,9 +153,7 @@ jobs:
                 "iconURL": "https://raw.githubusercontent.com/$REPO/main/assets/icon.png",
                 "tintColor": "2EE6A6",
                 "category": "utilities",
-                "appPermissions": { "entitlements": [], "privacy": {
-                  "NSMicrophoneUsageDescription": "Voice search",
-                  "NSSpeechRecognitionUsageDescription": "Voice search" } },
+                "appPermissions": { "entitlements": [], "privacy": {} },
                 "versions": [
                   {
                     "version": "$APP_VERSION",
