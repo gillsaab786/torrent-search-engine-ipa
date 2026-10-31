@@ -194,7 +194,9 @@ class _VerifyScreenState extends State<VerifyScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            color: _passed ? const Color(0x332EE6A6) : const Color(0xFF151A21),
+            color: _passed
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
+                : const Color(0xFF1C1C1E),
             child: Text(
               _passed
                   ? 'Verified ✓  Returning to your search…'

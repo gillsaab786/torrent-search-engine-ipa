@@ -1,10 +1,13 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../appearance.dart';
 import '../cloudflare.dart';
 import '../main.dart';
 import '../models.dart';
 import '../providers.dart';
+import '../widgets/ios.dart';
 import '../widgets/result_tile.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -131,6 +134,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return SafeArea(
       bottom: false,
       child: ListenableBuilder(
@@ -138,20 +142,55 @@ class _SearchScreenState extends State<SearchScreen> {
         builder: (context, _) {
           final visible = _visible;
           final sources = _results.map((r) => r.source).toSet().toList()..sort();
+          final showHistory = _lastQuery == null || (_controller.text.isEmpty && !_loading);
           return CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
-              SliverToBoxAdapter(child: _searchBar()),
-              SliverToBoxAdapter(child: _categoryChips()),
-              if (_lastQuery == null || _controller.text.isEmpty && !_loading)
-                ..._historySlivers()
+              SliverToBoxAdapter(
+                child: LargeTitle('Search', actions: [
+                  if (!showHistory && !_loading)
+                    PopupMenuButton<SortMode>(
+                      tooltip: 'Sort',
+                      initialValue: store.sort,
+                      onSelected: store.setSort,
+                      icon: Icon(CupertinoIcons.sort_down, color: accent, size: 26),
+                      itemBuilder: (_) => [
+                        for (final s in SortMode.values)
+                          PopupMenuItem(
+                            value: s,
+                            child: Row(children: [
+                              Expanded(child: Text(s.label)),
+                              if (s == store.sort) Icon(CupertinoIcons.checkmark, size: 18, color: accent),
+                            ]),
+                          ),
+                      ],
+                    ),
+                ]),
+              ),
+              SliverToBoxAdapter(child: _searchBar(accent)),
+              SliverToBoxAdapter(
+                child: PillTabs<Category>(
+                  items: Category.values,
+                  selected: _category,
+                  label: (c) => c.label,
+                  onSelected: (c) {
+                    setState(() => _category = c);
+                    if (_lastQuery != null && _controller.text.isNotEmpty) _search();
+                  },
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: Divider(height: 0.5, thickness: 0.5, color: Ios.separator),
+              ),
+              if (showHistory)
+                ..._historySlivers(accent)
               else if (_loading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CupertinoActivityIndicator(radius: 14)),
                 )
               else ...[
-                SliverToBoxAdapter(child: _resultsHeader(visible.length, sources)),
+                SliverToBoxAdapter(child: _resultsHeader(visible.length, sources, accent)),
                 if (visible.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
@@ -161,7 +200,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ? 'Sources unreachable.\nTry again, or set a mirror in Settings.'
                             : 'No results',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white54),
+                        style: const TextStyle(color: Ios.secondaryLabel, fontSize: 16),
                       ),
                     ),
                   )
@@ -179,130 +218,89 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _searchBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-        child: TextField(
+  Widget _searchBar(Color accent) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        child: CupertinoSearchTextField(
           controller: _controller,
           focusNode: _focus,
-          textInputAction: TextInputAction.search,
+          placeholder: _listening ? 'Listening…' : 'Search torrents',
+          style: const TextStyle(color: Colors.white, fontSize: 17),
+          backgroundColor: Ios.fill,
+          itemColor: Ios.secondaryLabel,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           onSubmitted: (_) => _search(),
           onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            hintText: _listening ? 'Listening…' : 'Search torrents',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_controller.text.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => setState(() => _controller.clear()),
-                  ),
-                IconButton(
-                  icon: Icon(_listening ? Icons.mic : Icons.mic_none,
-                      color: _listening ? Theme.of(context).colorScheme.primary : null),
-                  onPressed: _toggleVoice,
-                ),
-              ],
-            ),
-            filled: true,
-            fillColor: const Color(0xFF151A21),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-          ),
+          onSuffixTap: () => setState(() => _controller.clear()),
+          suffixMode: OverlayVisibilityMode.editing,
+          suffixIcon: const Icon(CupertinoIcons.xmark_circle_fill),
+        ).withMic(
+          listening: _listening,
+          accent: accent,
+          onTap: _toggleVoice,
         ),
       );
 
-  Widget _categoryChips() => SizedBox(
-        height: 48,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          children: [
-            for (final c in Category.values)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: Text(c.label),
-                  selected: _category == c,
-                  onSelected: (_) {
-                    setState(() => _category = c);
-                    if (_lastQuery != null && _controller.text.isNotEmpty) _search();
-                  },
-                ),
-              ),
-          ],
-        ),
-      );
-
-  Widget _resultsHeader(int count, List<String> sources) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+  Widget _resultsHeader(int count, List<String> sources, Color accent) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Text('$count results', style: const TextStyle(color: Colors.white70)),
-              const Spacer(),
-              PopupMenuButton<SortMode>(
-                tooltip: 'Sort',
-                initialValue: store.sort,
-                onSelected: store.setSort,
-                itemBuilder: (_) => [
-                  for (final s in SortMode.values)
-                    PopupMenuItem(value: s, child: Text(s.label)),
-                ],
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(children: [
-                    const Icon(Icons.sort, size: 18),
-                    const SizedBox(width: 4),
-                    Text(store.sort.label),
-                  ]),
-                ),
-              ),
-            ]),
+            Text('$count results · ${store.sort.label}',
+                style: const TextStyle(color: Ios.secondaryLabel, fontSize: 13)),
             if (sources.length > 1)
-              Wrap(spacing: 6, children: [
-                for (final s in sources)
-                  FilterChip(
-                    label: Text(s),
-                    selected: _sourceFilter.contains(s),
-                    onSelected: (on) => setState(() =>
-                        on ? _sourceFilter.add(s) : _sourceFilter.remove(s)),
-                  ),
-              ]),
-            if (_needsVerify.isNotEmpty) _verifyBanner(),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final s in sources)
+                    GestureDetector(
+                      onTap: () => setState(() =>
+                          _sourceFilter.contains(s) ? _sourceFilter.remove(s) : _sourceFilter.add(s)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _sourceFilter.contains(s) ? accent : Ios.fill,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(s,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _sourceFilter.contains(s) ? onAccent(accent) : Colors.white)),
+                      ),
+                    ),
+                ]),
+              ),
+            if (_needsVerify.isNotEmpty) _verifyBanner(accent),
             if (_errors.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 6),
                 child: Text(_errors.join(' · '),
-                    style: const TextStyle(color: Color(0xFFFFB86B), fontSize: 12)),
+                    style: const TextStyle(color: Ios.tertiaryLabel, fontSize: 12)),
               ),
           ],
         ),
       );
 
-  Widget _verifyBanner() {
+  Widget _verifyBanner(Color accent) {
     final names = _needsVerify.map((o) => o.provider.name).join(', ');
     return Container(
-      margin: const EdgeInsets.fromLTRB(0, 6, 12, 2),
-      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C2230),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(color: Ios.grouped, borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
-        const Icon(Icons.shield_outlined, size: 20, color: Color(0xFFFFB86B)),
-        const SizedBox(width: 10),
+        Icon(CupertinoIcons.shield_lefthalf_fill, size: 22, color: accent),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
-            '${_needsVerify.length} more source${_needsVerify.length == 1 ? '' : 's'} need a one-time check: $names',
-            style: const TextStyle(fontSize: 13),
+            '${_needsVerify.length} more source${_needsVerify.length == 1 ? '' : 's'} need a one-time check\n$names',
+            style: const TextStyle(fontSize: 13, color: Ios.secondaryLabel),
           ),
         ),
-        TextButton(onPressed: _verifyAll, child: const Text('Verify')),
+        CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          onPressed: _verifyAll,
+          child: Text('Verify', style: TextStyle(color: accent, fontWeight: FontWeight.w600)),
+        ),
       ]),
     );
   }
@@ -315,8 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
         context,
         MaterialPageRoute(
           fullscreenDialog: true,
-          builder: (_) =>
-              VerifyScreen(siteName: o.provider.name, homepage: o.challenge!.homepage),
+          builder: (_) => VerifyScreen(siteName: o.provider.name, homepage: o.challenge!.homepage),
         ),
       );
       if (ok == true) {
@@ -328,14 +325,14 @@ class _SearchScreenState extends State<SearchScreen> {
     if (any && mounted) _search(_lastQuery);
   }
 
-  List<Widget> _historySlivers() {
+  List<Widget> _historySlivers(Color accent) {
     if (store.history.isEmpty) {
       return const [
         SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
             child: Text('Search movies, shows, music, apps and more.\nNo ads, everything unlocked.',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.white54)),
+                textAlign: TextAlign.center, style: TextStyle(color: Ios.secondaryLabel, fontSize: 16)),
           ),
         ),
       ];
@@ -343,11 +340,15 @@ class _SearchScreenState extends State<SearchScreen> {
     return [
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
           child: Row(children: [
-            const Text('Recent searches', style: TextStyle(color: Colors.white70)),
+            const Text('Recent', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             const Spacer(),
-            TextButton(onPressed: store.clearHistory, child: const Text('Clear')),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              onPressed: store.clearHistory,
+              child: Text('Clear', style: TextStyle(color: accent)),
+            ),
           ]),
         ),
       ),
@@ -355,17 +356,43 @@ class _SearchScreenState extends State<SearchScreen> {
         itemCount: store.history.length,
         itemBuilder: (_, i) {
           final q = store.history[i];
-          return ListTile(
-            leading: const Icon(Icons.history, color: Colors.white38),
-            title: Text(q),
-            trailing: IconButton(
-              icon: const Icon(Icons.close, size: 18, color: Colors.white38),
-              onPressed: () => store.removeHistory(q),
-            ),
+          return InkWell(
             onTap: () => _search(q),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 13, 4, 13),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Ios.separator, width: 0.5)),
+              ),
+              child: Row(children: [
+                const Icon(CupertinoIcons.clock, size: 18, color: Ios.secondaryLabel),
+                const SizedBox(width: 12),
+                Expanded(child: Text(q, style: const TextStyle(fontSize: 17))),
+                GestureDetector(
+                  onTap: () => store.removeHistory(q),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(CupertinoIcons.xmark, size: 16, color: Ios.tertiaryLabel),
+                  ),
+                ),
+              ]),
+            ),
           );
         },
       ),
     ];
   }
+}
+
+extension on CupertinoSearchTextField {
+  /// Search field with a microphone button beside it.
+  Widget withMic({required bool listening, required Color accent, required VoidCallback onTap}) =>
+      Row(children: [
+        Expanded(child: this),
+        CupertinoButton(
+          padding: const EdgeInsets.only(left: 10),
+          onPressed: onTap,
+          child: Icon(listening ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
+              color: accent, size: 26),
+        ),
+      ]);
 }

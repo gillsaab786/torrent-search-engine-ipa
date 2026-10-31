@@ -1,11 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../appearance.dart';
 import '../main.dart';
 import '../models.dart';
+import 'ios.dart';
 
+/// Flat list row: bold name, grey details line, chevron.
 class ResultTile extends StatelessWidget {
   final TorrentResult result;
   const ResultTile({super.key, required this.result});
@@ -13,157 +17,142 @@ class ResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = result;
-    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54);
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => showResultSheet(context, r),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    final accent = Theme.of(context).colorScheme.primary;
+    const grey = TextStyle(fontSize: 14, color: Ios.secondaryLabel);
+    return InkWell(
+      onTap: () => showResultSheet(context, r),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Ios.separator, width: 0.5)),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(r.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _Stat(icon: Icons.arrow_upward, value: r.seeders < 0 ? '?' : '${r.seeders}', color: const Color(0xFF2EE6A6)),
-                  const SizedBox(width: 12),
-                  _Stat(icon: Icons.arrow_downward, value: r.leechers < 0 ? '?' : '${r.leechers}', color: const Color(0xFFFF6B6B)),
-                  const SizedBox(width: 12),
-                  Text(formatBytes(r.sizeBytes), style: muted),
-                  const Spacer(),
-                  Text([r.source, formatAge(r.added)].where((e) => e.isNotEmpty).join(' · '),
-                      style: muted),
-                ],
-              ),
-            ],
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.25)),
+              const SizedBox(height: 5),
+              Row(children: [
+                Icon(CupertinoIcons.arrow_up, size: 13, color: accent),
+                Text(r.seeders < 0 ? '?' : '${r.seeders}',
+                    style: TextStyle(fontSize: 14, color: accent, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 8),
+                const Icon(CupertinoIcons.arrow_down, size: 13, color: Ios.secondaryLabel),
+                Text(r.leechers < 0 ? '?' : '${r.leechers}', style: grey),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    [formatBytes(r.sizeBytes), r.source, formatAge(r.added)]
+                        .where((e) => e.isNotEmpty && e != '—')
+                        .join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: grey,
+                  ),
+                ),
+              ]),
+            ]),
           ),
-        ),
+          const SizedBox(width: 6),
+          const Icon(CupertinoIcons.chevron_right, size: 16, color: Ios.tertiaryLabel),
+        ]),
       ),
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final Color color;
-  const _Stat({required this.icon, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 2),
-          Text(value, style: TextStyle(color: color, fontSize: 13, fontFeatures: const [FontFeature.tabularFigures()])),
-        ],
-      );
-}
-
 void _toast(BuildContext context, String msg) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
+    ..showSnackBar(SnackBar(content: Text(msg)));
 }
 
 Future<void> showResultSheet(BuildContext context, TorrentResult r) {
   return showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF12161C),
     showDragHandle: true,
     isScrollControlled: true,
+    backgroundColor: Ios.background,
     builder: (ctx) => ListenableBuilder(
       listenable: store,
       builder: (ctx, _) {
         final magnet = r.magnet(store.trackers);
         final fav = store.isFavourite(r);
-        Widget row(String k, String v) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(children: [
-                SizedBox(width: 90, child: Text(k, style: const TextStyle(color: Colors.white54))),
-                Expanded(child: SelectableText(v)),
-              ]),
-            );
+        final accent = Theme.of(ctx).colorScheme.primary;
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(r.name, style: Theme.of(ctx).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                row('Size', formatBytes(r.sizeBytes)),
-                row('Seeders', r.seeders < 0 ? 'Unknown' : '${r.seeders}'),
-                row('Leechers', r.leechers < 0 ? 'Unknown' : '${r.leechers}'),
-                if (r.added != null) row('Added', r.added!.toLocal().toString().split('.').first),
-                row('Source', r.source),
-                if (r.category != null) row('Category', r.category!),
-                row('Hash', r.infoHash.toUpperCase()),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: SelectableText(r.name,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.25)),
+                ),
+                IosSection(children: [
+                  IosRow(title: 'Size', value: formatBytes(r.sizeBytes)),
+                  IosRow(title: 'Seeders', value: r.seeders < 0 ? 'Unknown' : '${r.seeders}'),
+                  IosRow(title: 'Leechers', value: r.leechers < 0 ? 'Unknown' : '${r.leechers}'),
+                  if (r.added != null)
+                    IosRow(title: 'Added', value: r.added!.toLocal().toString().split(' ').first),
+                  IosRow(title: 'Source', value: r.source),
+                  if (r.category != null) IosRow(title: 'Category', value: r.category!),
+                ]),
+                IosSection(header: 'Info hash', children: [
+                  Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: SelectableText(r.infoHash.toUpperCase(),
+                        style: const TextStyle(fontSize: 13, fontFamily: 'Courier', color: Ios.secondaryLabel)),
+                  ),
+                ]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                   child: FilledButton.icon(
-                    icon: const Icon(Icons.open_in_new),
+                    icon: const Icon(CupertinoIcons.arrow_down_circle_fill),
                     label: const Text('Open in torrent app'),
                     onPressed: () async {
                       bool ok = false;
                       try {
-                        ok = await launchUrl(Uri.parse(magnet),
-                            mode: LaunchMode.externalApplication);
+                        ok = await launchUrl(Uri.parse(magnet), mode: LaunchMode.externalApplication);
                       } catch (_) {}
                       if (!ok && ctx.mounted) {
                         await Clipboard.setData(ClipboardData(text: magnet));
-                        if (ctx.mounted) {
-                          _toast(ctx, 'No torrent app found — magnet link copied instead');
-                        }
+                        if (ctx.mounted) _toast(ctx, 'No torrent app found — magnet link copied');
                       }
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('Copy'),
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: magnet));
-                        if (ctx.mounted) _toast(ctx, 'Magnet link copied');
-                      },
-                    ),
+                IosSection(children: [
+                  IosRow(
+                    title: 'Copy magnet link',
+                    leading: Icon(CupertinoIcons.doc_on_doc, color: accent, size: 22),
+                    onTap: () async {
+                      await Clipboard.setData(ClipboardData(text: magnet));
+                      if (ctx.mounted) _toast(ctx, 'Magnet link copied');
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.ios_share, size: 18),
-                      label: const Text('Share'),
-                      onPressed: () => Share.share(magnet, subject: r.name),
-                    ),
+                  IosRow(
+                    title: 'Share',
+                    leading: Icon(CupertinoIcons.share, color: accent, size: 22),
+                    onTap: () => Share.share(magnet, subject: r.name),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(fav ? Icons.bookmark : Icons.bookmark_border, size: 18),
-                      label: Text(fav ? 'Saved' : 'Save'),
-                      onPressed: () => store.toggleFavourite(r),
-                    ),
+                  IosRow(
+                    title: fav ? 'Remove from Saved' : 'Save',
+                    leading: Icon(fav ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
+                        color: accent, size: 22),
+                    onTap: () => store.toggleFavourite(r),
                   ),
+                  if (r.pageUrl != null)
+                    IosRow(
+                      title: 'Open source page',
+                      leading: Icon(CupertinoIcons.globe, color: accent, size: 22),
+                      chevron: true,
+                      onTap: () => launchUrl(Uri.parse(r.pageUrl!), mode: LaunchMode.externalApplication),
+                    ),
                 ]),
-                if (r.pageUrl != null) ...[
-                  const SizedBox(height: 4),
-                  TextButton.icon(
-                    icon: const Icon(Icons.public, size: 18),
-                    label: const Text('Open source page'),
-                    onPressed: () => launchUrl(Uri.parse(r.pageUrl!),
-                        mode: LaunchMode.externalApplication),
-                  ),
-                ],
               ],
             ),
           ),

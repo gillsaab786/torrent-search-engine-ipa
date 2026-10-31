@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'appearance.dart';
@@ -54,20 +55,43 @@ class _HomeShellState extends State<HomeShell> {
           SettingsScreen(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(
-              icon: Icon(Icons.bookmark_border),
-              selectedIcon: Icon(Icons.bookmark),
-              label: 'Saved'),
-          NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: 'Settings'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xF0101010),
+          border: Border(top: BorderSide(color: Ios.separator, width: 0.5)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 54,
+            child: Row(children: [
+              for (final (i, icon, label) in const [
+                (0, CupertinoIcons.search, 'Search'),
+                (1, CupertinoIcons.bookmark_fill, 'Saved'),
+                (2, CupertinoIcons.gear_solid, 'Settings'),
+              ])
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _tab = i),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(icon,
+                          size: 25,
+                          color: _tab == i ? Theme.of(context).colorScheme.primary : Ios.secondaryLabel),
+                      const SizedBox(height: 2),
+                      Text(label,
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: _tab == i
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Ios.secondaryLabel)),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+        ),
       ),
     );
   }
