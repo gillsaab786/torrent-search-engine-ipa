@@ -1,0 +1,25 @@
+name: seedfinder
+description: Ad-free torrent search for iOS. Searches public indexes and hands magnet links to your torrent app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  xml: ^6.5.0
+  url_launcher: ^6.3.0
+  shared_preferences: ^2.3.2
+  share_plus: ^10.0.0
+  speech_to_text: ^7.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

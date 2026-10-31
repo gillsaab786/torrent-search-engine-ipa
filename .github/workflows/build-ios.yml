@@ -1,0 +1,54 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate iOS project
+        run: flutter create --platforms=ios --org com.gillsaab --project-name seedfinder .
+
+      - name: Configure iOS project
+        run: |
+          PLIST=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Seedfinder" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Seedfinder" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Seedfinder uses the microphone for voice search.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Seedfinder converts your voice into a search query.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes:0 string magnet" $PLIST
+          sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile || true
+          cat $PLIST
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Check code
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build app (unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry Seedfinder.ipa Payload
+          ls -lh Seedfinder.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Seedfinder-ipa
+          path: Seedfinder.ipa
+          retention-days: 30
