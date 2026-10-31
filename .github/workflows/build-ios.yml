@@ -102,28 +102,9 @@ jobs:
 
       - name: Test source parsers
         run: |
-          set +e
-          flutter test --machine > tests.jsonl
-          STATUS=$?
-          set -e
-          python3 - <<'PY'
-          import json
-          names, fails = {}, []
-          for line in open('tests.jsonl'):
-              try:
-                  e = json.loads(line)
-              except ValueError:
-                  continue
-              if e.get('type') == 'testStart':
-                  names[e['test']['id']] = e['test']['name']
-              elif e.get('type') == 'error':
-                  msg = ' '.join(e.get('error', '').split())[:400]
-                  where = ' '.join(e.get('stackTrace', '').split())[:200]
-                  fails.append((names.get(e.get('testID'), '?'), msg, where))
-          for n, m, w in fails:
-              print(f'::error title=Test failed: {n}::{m} @ {w}')
-          print(len(fails), 'failures')
-          PY
+          STATUS=0
+          flutter test --machine > tests.jsonl || STATUS=$?
+          python3 tools/ci_test_report.py tests.jsonl || echo "::warning::Test report script failed"
           exit $STATUS
 
       - name: Build app (unsigned)
