@@ -3,6 +3,9 @@ name: Build iOS IPA
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'tools/**'
+      - '.github/workflows/probe.yml'
   workflow_dispatch:
 
 permissions:
