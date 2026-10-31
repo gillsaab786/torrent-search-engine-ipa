@@ -1,0 +1,60 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyaa="https://nyaa.si/xmlns/nyaa" version="2.0">
+	<channel>
+		<title>Nyaa - &#34;one piece&#34; - Torrent File RSS</title>
+		<description>RSS Feed for &#34;one piece&#34;</description>
+		<link>https://nyaa.si/</link>
+		<atom:link href="https://nyaa.si/?page=rss" rel="self" type="application/rss+xml" />
+		<item>
+			<title>[NanakoRaws] One Piece - 994 (BS8 TV 1080p HEVC AAC)</title>
+				<link>https://nyaa.si/download/2180637.torrent</link>
+				<guid isPermaLink="true">https://nyaa.si/view/2180637</guid>
+				<pubDate>Sat, 31 Oct 2026 03:49:35 -0000</pubDate>
+
+				<nyaa:seeders>316</nyaa:seeders>
+				<nyaa:leechers>37</nyaa:leechers>
+				<nyaa:downloads>1126</nyaa:downloads>
+				<nyaa:infoHash>13df974956a3ff5584247f850539c1a6dad6a7e4</nyaa:infoHash>
+			<nyaa:categoryId>1_4</nyaa:categoryId>
+			<nyaa:category>Anime - Raw</nyaa:category>
+			<nyaa:size>434.0 MiB</nyaa:size>
+			<nyaa:comments>0</nyaa:comments>
+			<nyaa:trusted>No</nyaa:trusted>
+			<nyaa:remake>No</nyaa:remake>
+			<description><![CDATA[<a href="https://nyaa.si/view/2180637">#2180637 | [NanakoRaws] One Piece - 994 (BS8 TV 1080p HEVC AAC)</a> | 434.0 MiB | Anime - Raw | 13df974956a3ff5584247f850539c1a6dad6a7e4]]></description>
+		</item>
+<item>
+			<title>[NanakoRaws] One Piece - 545 (FujiTV TWO TV 1080p HEVC AAC)</title>
+				<link>https://nyaa.si/download/2180608.torrent</link>
+				<guid isPermaLink="true">https://nyaa.si/view/2180608</guid>
+				<pubDate>Sat, 31 Oct 2026 02:18:27 -0000</pubDate>
+
+				<nyaa:seeders>249</nyaa:seeders>
+				<nyaa:leechers>22</nyaa:leechers>
+				<nyaa:downloads>933</nyaa:downloads>
+				<nyaa:infoHash>7e72c9cbc4779cb66f4c8a3962d30ec412a68252</nyaa:infoHash>
+			<nyaa:categoryId>1_4</nyaa:categoryId>
+			<nyaa:category>Anime - Raw</nyaa:category>
+			<nyaa:size>441.0 MiB</nyaa:size>
+			<nyaa:comments>0</nyaa:comments>
+			<nyaa:trusted>No</nyaa:trusted>
+			<nyaa:remake>No</nyaa:remake>
+			<description><![CDATA[<a href="https://nyaa.si/view/2180608">#2180608 | [NanakoRaws] One Piece - 545 (FujiTV TWO TV 1080p HEVC AAC)</a> | 441.0 MiB | Anime - Raw | 7e72c9cbc4779cb66f4c8a3962d30ec412a68252]]></description>
+		</item>
+<item>
+			<title>[NanakoRaws] One Piece - 544 (FujiTV TWO TV 1080p HEVC AAC)</title>
+				<link>https://nyaa.si/download/2180607.torrent</link>
+				<guid isPermaLink="true">https://nyaa.si/view/2180607</guid>
+				<pubDate>Sat, 31 Oct 2026 02:18:17 -0000</pubDate>
+
+				<nyaa:seeders>229</nyaa:seeders>
+				<nyaa:leechers>24</nyaa:leechers>
+				<nyaa:downloads>943</nyaa:downloads>
+				<nyaa:infoHash>5f5ccf31e404bbabccbc69e123b5d14fb03580ad</nyaa:infoHash>
+			<nyaa:categoryId>1_4</nyaa:categoryId>
+			<nyaa:category>Anime - Raw</nyaa:category>
+			<nyaa:size>407.1 MiB</nyaa:size>
+			<nyaa:comments>0</nyaa:comments>
+			<nyaa:trusted>No</nyaa:trusted>
+			<nyaa:remake>No</nyaa:remake>
+			<description><![CDATA[<a href="https://nyaa.si/view/2180607">#2180607 | [NanakoRaws] One Piece - 544 (FujiTV TWO TV 1080p HEVC AAC)</a> | 407.1 MiB | Anime - Raw | 5f5ccf31e404bbabccbc69e123b5d14fb03580ad]]></description>
+		</item></channel></rss>

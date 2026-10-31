@@ -2,7 +2,11 @@
 
 Ad-free torrent search for iPhone, with every feature included.
 
-- Searches 7 sources in parallel (Knaben meta-search covering 1337x, TorrentGalaxy, RARBG archive and more; ApiBay; Torrents-CSV; YTS; Nyaa; AnimeTosho; TorrentDownloads), results de-duplicated
+- Searches 14 sources in parallel, results de-duplicated:
+  - General: Knaben (meta-search over 1337x, The Pirate Bay, RARBG archive and more), ApiBay, BitSearch, Torrents-CSV, LimeTorrents, TorrentDownloads, Rutor, BT4G, Internet Archive
+  - Movies: YTS
+  - Anime: Nyaa, SubsPlease, TokyoTosho, AnimeTosho
+  - Optional: your own Jackett or Prowlarr server (hundreds of trackers)
 - Categories, sort (seeders / size / newest / name), source filter, minimum seeders (default 3)
 - Voice search, search history, saved torrents
 - Open magnet in your torrent app, copy or share it

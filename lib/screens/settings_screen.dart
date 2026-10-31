@@ -14,12 +14,20 @@ class SettingsScreen extends StatelessWidget {
         listenable: store,
         builder: (context, _) => ListView(
           children: [
-            const _Header('Sources'),
+            _Header('Sources (${store.enabledProviders.length} of ${allProviders.length} on)'),
             for (final p in allProviders)
               SwitchListTile(
                 title: Text(p.name),
-                subtitle: Text(store.baseUrls[p.id] ?? p.defaultBaseUrl,
-                    style: const TextStyle(color: Colors.white54)),
+                subtitle: Text(
+                  [
+                    if (p.note != null) p.note!,
+                    (store.baseUrls[p.id] ?? '').isNotEmpty
+                        ? store.baseUrls[p.id]!
+                        : (p.needsSetup ? 'Not set up — tap ✎ to add' : p.defaultBaseUrl),
+                  ].join('\n'),
+                  style: const TextStyle(color: Colors.white54),
+                ),
+                isThreeLine: p.note != null,
                 value: store.enabledProviders.contains(p.id),
                 onChanged: (v) => store.setProviderEnabled(p.id, v),
                 secondary: IconButton(

@@ -5,6 +5,8 @@ import 'package:xml/xml.dart';
 
 import 'models.dart';
 
+part 'providers_more.dart';
+
 /// Content categories shown as filter chips. Each provider maps these to
 /// its own category codes (or ignores them when it only has one kind).
 enum Category { all, video, audio, apps, games, books, anime }
@@ -132,7 +134,7 @@ class YtsProvider extends SearchProvider {
   @override
   String get name => 'YTS';
   @override
-  String get defaultBaseUrl => 'https://yts.mx';
+  String get defaultBaseUrl => 'https://yts.gg';
   @override
   Set<Category> get categories => {Category.all, Category.video};
 
@@ -270,7 +272,28 @@ DateTime _parseRfc822(String s) {
 String? _hashFromMagnet(String? magnet) {
   if (magnet == null) return null;
   final m = RegExp(r'urn:btih:([a-zA-Z0-9]{32,40})').firstMatch(magnet);
-  return m?.group(1);
+  final h = m?.group(1);
+  if (h == null) return null;
+  return h.length == 32 ? (_base32ToHex(h) ?? h) : h.toLowerCase();
+}
+
+/// Some sources give the info hash in base32; convert so duplicates match.
+String? _base32ToHex(String s) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  var bits = 0, value = 0;
+  final out = StringBuffer();
+  for (final ch in s.toUpperCase().split('')) {
+    final v = alphabet.indexOf(ch);
+    if (v < 0) return null;
+    value = (value << 5) | v;
+    bits += 5;
+    while (bits >= 8) {
+      bits -= 8;
+      out.write(((value >> bits) & 0xff).toRadixString(16).padLeft(2, '0'));
+    }
+  }
+  final hex = out.toString();
+  return hex.length == 40 ? hex : null;
 }
 
 int _toInt(dynamic v) {
@@ -325,7 +348,7 @@ class KnabenProvider extends SearchProvider {
       if (h is! Map) continue;
       final hash = (h['hash'] ?? _hashFromMagnet(h['magnetUrl']?.toString()) ?? '').toString();
       if (hash.isEmpty) continue;
-      final tracker = (h['tracker'] ?? '').toString();
+      final tracker = (h['tracker'] ?? h['cachedOrigin'] ?? '').toString();
       out.add(TorrentResult(
         name: (h['title'] ?? '').toString(),
         infoHash: hash,
@@ -562,13 +585,25 @@ class TorznabProvider extends SearchProvider {
 }
 
 final List<SearchProvider> allProviders = [
+  // General
   KnabenProvider(),
   ApiBayProvider(),
+  BitSearchProvider(),
   TorrentsCsvProvider(),
-  YtsProvider(),
-  NyaaProvider(),
-  AnimeToshoProvider(),
+  LimeTorrentsProvider(),
   TorrentDownloadsProvider(),
+  RutorProvider(),
+  Bt4gProvider(),
+  InternetArchiveProvider(),
+  // Movies
+  YtsProvider(),
+  // Anime
+  NyaaProvider(),
+  SubsPleaseProvider(),
+  TokyoToshoProvider(),
+  AnimeToshoProvider(),
+  // Your own server
+  TorznabProvider(),
 ];
 
 const defaultTrackers = [
