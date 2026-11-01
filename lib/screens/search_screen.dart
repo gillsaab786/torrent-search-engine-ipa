@@ -23,6 +23,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Category _category = Category.all;
   bool _loading = false;
+  int _done = 0, _total = 0;
   String? _lastQuery;
   List<TorrentResult> _results = [];
   List<String> _errors = [];
@@ -44,6 +45,8 @@ class _SearchScreenState extends State<SearchScreen> {
     store.addHistory(query);
     setState(() {
       _loading = true;
+      _done = 0;
+      _total = 0;
       _lastQuery = query;
       _errors = [];
     });
@@ -52,7 +55,13 @@ class _SearchScreenState extends State<SearchScreen> {
       category: _category,
       enabledIds: store.enabledProviders,
       baseUrls: store.baseUrls,
+      onProgress: (d, t) {
+        if (mounted) setState(() => (_done, _total) = (d, t));
+      },
     );
+    if (!mounted) return;
+    // Let the ring reach 100% before the results appear.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     if (!mounted) return;
     // De-duplicate by info hash, keeping the entry with most seeders.
     final byHash = <String, TorrentResult>{};
@@ -157,9 +166,9 @@ class _SearchScreenState extends State<SearchScreen> {
               if (showHistory)
                 ..._historySlivers(accent)
               else if (_loading)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: CupertinoActivityIndicator(radius: 14)),
+                  child: Center(child: SearchProgress(done: _done, total: _total, accent: accent)),
                 )
               else ...[
                 SliverToBoxAdapter(child: _resultsHeader(visible.length, sources, accent)),
@@ -384,4 +393,80 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     ];
   }
+}
+
+/// Ring that fills from 0 to 100% as sources answer, in the app colour.
+class SearchProgress extends StatelessWidget {
+  final int done, total;
+  final Color accent;
+  const SearchProgress({super.key, required this.done, required this.total, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final target = total == 0 ? 0.0 : done / total;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      TweenAnimationBuilder<double>(
+        tween: Tween(end: target),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        builder: (_, v, __) => SizedBox(
+          width: 132,
+          height: 132,
+          child: CustomPaint(
+            painter: _RingPainter(v, accent),
+            child: Center(
+              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text('${(v * 100).round()}',
+                    style: const TextStyle(
+                        fontSize: 38, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7, left: 1),
+                  child: Text('%', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: accent)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(total == 0 ? 'Starting search…' : 'Searched $done of $total sources',
+          style: const TextStyle(fontSize: 14, color: Ios.secondaryLabel)),
+    ]);
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  final double value;
+  final Color accent;
+  _RingPainter(this.value, this.accent);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 11.0;
+    final rect = Offset.zero & size;
+    final r = rect.deflate(stroke / 2);
+    canvas.drawArc(r, 0, 6.2832, false,
+        Paint()
+          ..color = Ios.fill
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke);
+    if (value <= 0) return;
+    // Accent shades along the arc: a lighter tint fading into the full colour.
+    final light = Color.lerp(accent, Colors.white, 0.45)!;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: 0,
+        endAngle: 6.2832,
+        colors: [light, accent, accent],
+        stops: const [0, 0.6, 1],
+        transform: const GradientRotation(-1.5708),
+      ).createShader(rect);
+    canvas.drawArc(r, -1.5708, 6.2832 * value.clamp(0.0, 1.0), false, paint);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.value != value || old.accent != accent;
 }

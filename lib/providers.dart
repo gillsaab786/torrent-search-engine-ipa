@@ -703,6 +703,7 @@ Future<List<ProviderOutcome>> searchAll({
   required Category category,
   required Set<String> enabledIds,
   required Map<String, String> baseUrls,
+  void Function(int done, int total)? onProgress,
 }) async {
   final client = Net.client();
   try {
@@ -710,7 +711,15 @@ Future<List<ProviderOutcome>> searchAll({
         .where((p) => enabledIds.contains(p.id) && p.categories.contains(category))
         .where((p) => !p.needsSetup || (baseUrls[p.id] ?? '').isNotEmpty)
         .toList();
-    return await Future.wait(active.map((p) async {
+    var done = 0;
+    onProgress?.call(0, active.length);
+    Future<ProviderOutcome> counted(Future<ProviderOutcome> f) async {
+      final o = await f;
+      onProgress?.call(++done, active.length);
+      return o;
+    }
+
+    return await Future.wait(active.map((p) => counted(() async {
       final addresses = addressesFor(p, baseUrls).take(4).toList();
       Object? lastError;
       for (var i = 0; i < addresses.length; i++) {
@@ -728,7 +737,7 @@ Future<List<ProviderOutcome>> searchAll({
         }
       }
       return ProviderOutcome(p, const [], _reason(lastError ?? 'unavailable'));
-    }));
+    }())));
   } finally {
     client.close();
   }
