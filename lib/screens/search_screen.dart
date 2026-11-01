@@ -56,7 +56,12 @@ class _SearchScreenState extends State<SearchScreen> {
       enabledIds: store.enabledProviders,
       baseUrls: store.baseUrls,
       onProgress: (d, t) {
-        if (mounted) setState(() => (_done, _total) = (d, t));
+        if (mounted) {
+          setState(() {
+            _done = d;
+            _total = t;
+          });
+        }
       },
     );
     if (!mounted) return;
