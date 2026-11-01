@@ -111,7 +111,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 : (d) {
                     final v = d.primaryVelocity ?? 0;
                     if (v.abs() < 250) return;
-                    _switchCategory(v < 0 ? 1 : -1);
+                    final dir = v < 0 ? 1 : -1;
+                    // After the last category, keep going to the next tab.
+                    if (!_switchCategory(dir)) swipeTabs?.call(dir, v);
                   },
             child: CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -189,12 +191,13 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _switchCategory(int step) {
+  bool _switchCategory(int step) {
     final i = Category.values.indexOf(_category) + step;
-    if (i < 0 || i >= Category.values.length) return;
+    if (i < 0 || i >= Category.values.length) return false;
     HapticFeedback.selectionClick();
     setState(() => _category = Category.values[i]);
     if (_lastQuery != null && _controller.text.isNotEmpty) _search();
+    return true;
   }
 
   Widget _searchBar(Color accent) => Padding(
