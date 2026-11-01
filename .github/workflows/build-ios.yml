@@ -28,6 +28,7 @@ jobs:
 
       - name: Generate iOS project
         run: |
+          flutter config --no-enable-swift-package-manager
           flutter create --platforms=ios --org com.gillsaab --project-name seedfinder .
           # Remove the generator's sample test; it references a class this app doesn't have.
           rm -f test/widget_test.dart
@@ -40,6 +41,22 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes:0 string magnet" $PLIST
           sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile || true
           cat $PLIST
+
+      - name: Turn off signing for pods
+        run: |
+          python3 - <<'PY'
+          p = 'ios/Podfile'
+          s = open(p).read()
+          key = 'flutter_additional_ios_build_settings(target)'
+          add = key + ("\n    target.build_configurations.each do |config|"
+                       "\n      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'"
+                       "\n      config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'"
+                       "\n      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'"
+                       "\n    end")
+          assert key in s, 'Podfile layout changed'
+          s = s.replace(key, add, 1)
+          open(p, 'w').write(s)
+          PY
 
       - name: Set app icon
         run: |
@@ -108,21 +125,44 @@ jobs:
       - name: Build app (unsigned)
         run: |
           set +e
-          flutter build ios --release --no-codesign \
+          # Let Flutter compile Dart and prepare the Xcode project, then build
+          # with Xcode directly so signing is off for every target (pods'
+          # resource bundles included).
+          flutter build ios --release --no-codesign --config-only \
             --build-name "$APP_VERSION" --build-number "${{ github.run_number }}" 2>&1 | tee build.txt
           STATUS=${PIPESTATUS[0]}
+          if [ $STATUS -eq 0 ]; then
+            cd ios
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release \
+              -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath ../build/dd \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER="" build 2>&1 | tee -a ../build.txt | grep -E "error:|BUILD (SUCCEEDED|FAILED)"
+            STATUS=${PIPESTATUS[0]}
+            cd ..
+          fi
           set -e
           if [ $STATUS -ne 0 ]; then
-            grep -iE "error[: ]" build.txt | grep -v "^warning" | head -40 | while IFS= read -r l; do
-              echo "::error::${l}"
-            done
+            python3 - <<'PY'
+          import re
+          lines = open('build.txt', errors='replace').read().splitlines()
+          pat = re.compile(r'error:|Error \(Xcode\)|requires a development team|Signing for|build commands failed|Undefined symbol|No such module', re.I)
+          hits = []
+          for l in lines:
+              if pat.search(l) and l.strip() not in hits:
+                  hits.append(l.strip())
+          def esc(x): return x.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          for h in hits[:12]:
+              print('::error::' + esc(h[:600]))
+          print('::warning title=Build log tail::' + esc('\n'.join(lines[-40:])[-6000:]))
+          PY
             exit $STATUS
           fi
+          ls -la build/dd/Build/Products/Release-iphoneos/
 
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
+          cp -R build/dd/Build/Products/Release-iphoneos/Runner.app Payload/
           if /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundleAlternateIcons" Payload/Runner.app/Info.plist > alt.txt 2>&1; then
             echo "::notice::Alternate icons in app: $(grep -c 'AppIcon-' alt.txt)"
           else
